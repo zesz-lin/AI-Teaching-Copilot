@@ -1,0 +1,34 @@
+{
+  "name": "geogebra-ai-copilot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GeoGebra AI Teaching Copilot — MV3 Browser Extension",
+  "scripts": {
+    "dev": "node scripts/build.js",
+    "build": "node scripts/build.js",
+    "typecheck": "tsc --noEmit --project config/tsconfig.base.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.270",
+    "@types/katex": "^0.16.8",
+    "@types/node": "^25.8.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.5.14",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.4.0",
+    "vite": "^5.4.0",
+    "vitest": "^4.1.6"
+  },
+  "dependencies": {
+    "katex": "^0.16.47",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.13"
+  }
+}

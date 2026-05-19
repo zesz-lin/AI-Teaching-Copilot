@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "GeoGebra AI Teaching Copilot",
+  "version": "0.1.0",
+  "description": "AI-powered teaching assistant for GeoGebra",
+
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "scripting",
+    "tabs"
+  ],
+
+  "host_permissions": [
+    "*://*.geogebra.org/*"
+  ],
+
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+
+  "background": {
+    "service_worker": "sw.js"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["*://*.geogebra.org/*"],
+      "js": ["cs.js"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["bridge.js"],
+      "matches": ["*://*.geogebra.org/*"]
+    }
+  ],
+
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+
+  "icons": {
+    "16": "assets/icons/16.png",
+    "48": "assets/icons/48.png",
+    "128": "assets/icons/128.png"
+  }
+}

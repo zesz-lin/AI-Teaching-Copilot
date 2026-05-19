@@ -1,0 +1,260 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   CSS Variables — light/dark mode
+   ============================================================ */
+
+:root {
+  --panel-bg: #ffffff;
+  --panel-surface: #f3f4f6;
+  --panel-border: #e5e7eb;
+  --panel-text: #111827;
+  --panel-muted: #6b7280;
+
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warn: #f59e0b;
+
+  --accent-surface: #eef2ff;
+  --danger-surface: #fef2f2;
+  --success-surface: #f0fdf4;
+  --warn-surface: #fffbeb;
+}
+
+.dark {
+  --panel-bg: #0f172a;
+  --panel-surface: #1e293b;
+  --panel-border: #334155;
+  --panel-text: #e2e8f0;
+  --panel-muted: #94a3b8;
+
+  --accent: #818cf8;
+  --accent-hover: #6366f1;
+  --danger: #f87171;
+  --success: #4ade80;
+  --warn: #fbbf24;
+
+  --accent-surface: #1e1b4b;
+  --danger-surface: #450a0a;
+  --success-surface: #052e16;
+  --warn-surface: #451a03;
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  background: var(--panel-bg);
+  color: var(--panel-text);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================================================
+   Scrollbar
+   ============================================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--panel-border);
+  border-radius: 3px;
+}
+
+/* ============================================================
+   Streaming cursor animation
+   ============================================================ */
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.streaming-cursor::after {
+  content: "▍";
+  animation: blink 0.8s infinite;
+  color: var(--panel-text);
+}
+
+/* ============================================================
+   Theme transition
+   ============================================================ */
+
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease !important;
+}
+
+/* ============================================================
+   Animation keyframes and utilities
+   ============================================================ */
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes messageSlideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes progressPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.2s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.15s ease-out forwards;
+}
+
+.animate-message-in {
+  animation: messageSlideIn 0.2s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.25s ease-out forwards;
+}
+
+.animate-pulse-progress {
+  animation: progressPulse 1.5s ease-in-out infinite;
+}
+
+/* ============================================================
+   Markdown content (EXPLAIN messages)
+   ============================================================ */
+
+.md-heading {
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0.5em 0 0.25em;
+}
+h1.md-heading { font-size: 1.2em; }
+h2.md-heading { font-size: 1.1em; }
+h3.md-heading { font-size: 1.05em; }
+h4.md-heading { font-size: 1em; }
+
+.md-list {
+  margin: 0.25em 0;
+  padding-left: 1.5em;
+}
+
+.system-message .md-list {
+  list-style-position: inside;
+  padding-left: 0;
+}
+
+.system-message p {
+  display: block;
+  margin: 0.15em 0;
+}
+.system-message p:first-child { margin-top: 0; }
+.system-message p:last-child { margin-bottom: 0; }
+
+.assistant-message p { margin: 0.15em 0; }
+.assistant-message p:first-child { margin-top: 0; }
+.assistant-message p:last-child { margin-bottom: 0; }
+
+.md-code {
+  background: var(--panel-surface);
+  border: 1px solid var(--panel-border);
+  border-radius: 3px;
+  padding: 0.1em 0.3em;
+  font-family: "Consolas", "Monaco", monospace;
+  font-size: 0.9em;
+}
+
+.md-code-block {
+  display: block;
+  background: var(--panel-surface);
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  padding: 0.5em 0.75em;
+  margin: 0.3em 0;
+  font-family: "Consolas", "Monaco", monospace;
+  font-size: 0.85em;
+  line-height: 1.4;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.md-math {
+  font-family: "Cambria Math", "Times New Roman", serif;
+  color: var(--accent);
+}
+
+/* ── Tables ─────────────────────────────────────────── */
+
+.md-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.3em 0;
+  font-size: 0.9em;
+}
+
+.md-table th,
+.md-table td {
+  border: 1px solid var(--panel-border);
+  padding: 0.25em 0.5em;
+  text-align: left;
+  vertical-align: top;
+}
+
+.md-table th {
+  background: var(--panel-surface);
+  font-weight: 600;
+}
+
+.md-table tr:nth-child(even) td {
+  background: var(--panel-surface)/30;
+}
+
+.assistant-message .md-heading {
+  margin: 0.6em 0 0.3em;
+}
+.assistant-message .md-heading:first-child { margin-top: 0; }
+
+.assistant-message .md-list {
+  margin: 0.3em 0;
+}
+.assistant-message .md-list:first-child { margin-top: 0; }
+.assistant-message .md-list:last-child { margin-bottom: 0; }
