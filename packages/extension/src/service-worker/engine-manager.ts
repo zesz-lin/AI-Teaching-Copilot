@@ -316,6 +316,20 @@ export class EngineSession {
     return this.pendingAnswers.has(actionId);
   }
 
+  /** Emit ENGINE_STATUS with current counts (for per-step progress) */
+  private emitEngineStatus(): void {
+    const status = this.engine.getStatus();
+    this.onEvent({
+      type: "ENGINE_STATUS",
+      engineState: this.engine.getState(),
+      currentStep: status.currentStep,
+      totalSteps: status.totalSteps,
+      completedSteps: status.completedSteps,
+      failedSteps: status.failedSteps,
+      isPaused: status.isPaused,
+    });
+  }
+
   /**
    * Handle a bridge event (OBJECT_CLICKED, CONSTRUCTION_STEP, etc.).
    * Checks pending event-driven pauses and resolves matching ones.
@@ -486,6 +500,7 @@ export class EngineSession {
           actionType: ctx.action.type,
           message: `${ctx.action.type} 完成`,
         });
+        this.emitEngineStatus();
         this.schedulePersist();
       },
       onActionFail: (ctx, err) => {
@@ -497,6 +512,7 @@ export class EngineSession {
           message: `${ctx.action.type} 失败`,
           error: err.message,
         });
+        this.emitEngineStatus();
         this.schedulePersist();
       },
       onActionSkip: (ctx) => {
@@ -507,6 +523,7 @@ export class EngineSession {
           actionType: ctx.action.type,
           message: `${ctx.action.type} 已跳过`,
         });
+        this.emitEngineStatus();
         this.schedulePersist();
       },
       onPause: (reason) => {

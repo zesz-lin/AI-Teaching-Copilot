@@ -1,5 +1,28 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "../i18n";
+import katex from "katex";
+
+function renderMath(text: string): string {
+  let out = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  out = out.replace(/\$\$([^$]+)\$\$/g, (_, expr) => {
+    try {
+      return katex.renderToString(expr.trim(), { throwOnError: false, displayMode: true });
+    } catch {
+      return `<span class="md-math">$$${expr}$$</span>`;
+    }
+  });
+  out = out.replace(/\$([^$]+)\$/g, (_, expr) => {
+    try {
+      return katex.renderToString(expr.trim(), { throwOnError: false, displayMode: false });
+    } catch {
+      return `<span class="md-math">$${expr}$</span>`;
+    }
+  });
+  return out;
+}
 
 interface QuestionCardProps {
   actionId: string;
@@ -92,7 +115,10 @@ export function QuestionCard({
         <span className="text-sm mt-0.5">❓</span>
         <div className="flex-1 min-w-0">
           {/* Question text */}
-          <div className="text-xs font-medium text-accent mb-1">{question}</div>
+          <div
+            className="text-xs font-medium text-accent mb-1"
+            dangerouslySetInnerHTML={{ __html: renderMath(question) }}
+          />
 
           {/* Answer type badge */}
           <span className="inline-block text-[9px] px-1 py-0.5 rounded bg-accent-surface text-accent mb-1.5">
@@ -112,9 +138,8 @@ export function QuestionCard({
                   key={opt}
                   onClick={() => handleSubmitChoice(opt)}
                   className={btnClass}
-                >
-                  {opt}
-                </button>
+                  dangerouslySetInnerHTML={{ __html: renderMath(opt) }}
+                />
               ))}
             </div>
           )}
