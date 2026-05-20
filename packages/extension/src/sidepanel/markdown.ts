@@ -181,7 +181,35 @@ export function renderMarkdown(text: string): string {
 // ── Inline formatting ────────────────────────────────────────
 
 function renderInline(text: string): string {
-  let out = escapeHtml(text);
+  const mathBlocks: string[] = [];
+
+  // Step 1: Render math blocks on raw unescaped text
+  let out = text;
+
+  // Display math ($$...$$) — render with KaTeX display mode
+  out = out.replace(/\$\$([^$]+)\$\$/g, (_sub, expr) => {
+    try {
+      const rendered = katex.renderToString(expr.trim(), { throwOnError: false, displayMode: true });
+      mathBlocks.push(rendered);
+      return `\x00M${mathBlocks.length - 1}\x00`;
+    } catch {
+      return `$$${expr}$$`;
+    }
+  });
+
+  // Inline math ($...$) — render with KaTeX inline mode
+  out = out.replace(/\$([^$]+)\$/g, (_sub, expr) => {
+    try {
+      const rendered = katex.renderToString(expr.trim(), { throwOnError: false, displayMode: false });
+      mathBlocks.push(rendered);
+      return `\x00M${mathBlocks.length - 1}\x00`;
+    } catch {
+      return `$${expr}$`;
+    }
+  });
+
+  // Step 2: Escape HTML on the remaining non-math text
+  out = escapeHtml(out);
 
   // Bold + italic (3 stars)
   out = out.replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>");
@@ -195,22 +223,9 @@ function renderInline(text: string): string {
   // Inline code
   out = out.replace(/`([^`]+)`/g, "<code class=\"md-code\">$1</code>");
 
-  // Display math ($$...$$) — render with KaTeX display mode
-  out = out.replace(/\$\$([^$]+)\$\$/g, (_: string, expr: string) => {
-    try {
-      return katex.renderToString(expr.trim(), { throwOnError: false, displayMode: true });
-    } catch {
-      return `<span class="md-math">$$${expr}$$</span>`;
-    }
-  });
-
-  // Inline math ($...$) — render with KaTeX inline mode
-  out = out.replace(/\$([^$]+)\$/g, (_: string, expr: string) => {
-    try {
-      return katex.renderToString(expr.trim(), { throwOnError: false, displayMode: false });
-    } catch {
-      return `<span class="md-math">$${expr}$</span>`;
-    }
+  // Step 3: Restore KaTeX-rendered math blocks
+  out = out.replace(/\x00M(\d+)\x00/g, (_sub, idx) => {
+    return mathBlocks[parseInt(idx)] ?? "";
   });
 
   return out;

@@ -3,24 +3,43 @@ import { useTranslation } from "../i18n";
 import katex from "katex";
 
 function renderMath(text: string): string {
-  let out = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  out = out.replace(/\$\$([^$]+)\$\$/g, (_, expr) => {
+  const mathBlocks: string[] = [];
+
+  let out = text;
+
+  // Render display math ($$...$$) first — on raw unescaped text
+  out = out.replace(/\$\$([^$]+)\$\$/g, (_sub, expr) => {
     try {
-      return katex.renderToString(expr.trim(), { throwOnError: false, displayMode: true });
+      const rendered = katex.renderToString(expr.trim(), { throwOnError: false, displayMode: true });
+      mathBlocks.push(rendered);
+      return `\x00M${mathBlocks.length - 1}\x00`;
     } catch {
       return `<span class="md-math">$$${expr}$$</span>`;
     }
   });
-  out = out.replace(/\$([^$]+)\$/g, (_, expr) => {
+
+  // Render inline math ($...$) — on raw unescaped text
+  out = out.replace(/\$([^$]+)\$/g, (_sub, expr) => {
     try {
-      return katex.renderToString(expr.trim(), { throwOnError: false, displayMode: false });
+      const rendered = katex.renderToString(expr.trim(), { throwOnError: false, displayMode: false });
+      mathBlocks.push(rendered);
+      return `\x00M${mathBlocks.length - 1}\x00`;
     } catch {
       return `<span class="md-math">$${expr}$</span>`;
     }
   });
+
+  // Escape HTML on the remaining non-math text
+  out = out
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  // Restore KaTeX-rendered math blocks
+  out = out.replace(/\x00M(\d+)\x00/g, (_sub, idx) => {
+    return mathBlocks[parseInt(idx)] ?? "";
+  });
+
   return out;
 }
 
