@@ -20,14 +20,7 @@
   },
 
   "background": {
-    "service_worker": "sw.js",
-    "scripts": ["sw.js"]
-  },
-
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "geogebra-ai-copilot@zesz-lin.github.io"
-    }
+    "service_worker": "sw.js"
   },
 
   "content_scripts": [
