@@ -77,6 +77,23 @@ const zhCN: Record<string, string> = {
 
   "message.steps_label": "📋 {count} 个教学步骤",
   "message.steps_more": "...还有 {count} 步",
+
+  "question.skip": "跳过",
+
+  "system.ggb_ready": "✅ GeoGebra 已就绪",
+  "system.ggb_disconnected": "⚠️ GeoGebra 已断开，请刷新 GeoGebra 页面后重试",
+  "system.config_load_failed": "❌ 无法加载 AI 配置",
+  "system.empty_response": "❌ AI 返回了空响应",
+  "system.plan_failed": "❌ AI 规划失败: {error}",
+  "system.plan_generated": "AI 已生成 {count} 步教学计划，开始执行…",
+  "system.request_failed": "❌ 请求失败: {error}",
+  "system.control_failed": "❌ 控制命令失败: {error}",
+  "system.submit_failed": "❌ 提交答案失败: {error}",
+  "system.canvas_cleared": "🫧 画布已清除",
+  "system.clear_failed": "❌ 清除失败: {error}",
+  "system.no_rerun_query": "⚠️ 没有可重新执行的查询",
+  "system.stopped": "⏹ 已停止",
+  "system.api_error": "❌ AI API 错误 ({status}): {detail}",
 };
 
 export default zhCN;

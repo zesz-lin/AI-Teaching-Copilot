@@ -29,6 +29,7 @@ export default function App() {
     sendQuery,
     sendEngineControl,
     submitAnswer,
+    skipQuestion,
     clearCanvas,
     rerun,
     stop,
@@ -152,6 +153,7 @@ export default function App() {
           answerType={activeQuestion.answerType}
           options={activeQuestion.options}
           onSubmit={submitAnswer}
+          onSkip={skipQuestion}
         />
       )}
 

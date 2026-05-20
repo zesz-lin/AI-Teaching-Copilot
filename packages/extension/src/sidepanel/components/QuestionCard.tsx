@@ -31,6 +31,7 @@ interface QuestionCardProps {
   options?: string[];
   hint?: string;
   onSubmit: (actionId: string, answer: string) => void;
+  onSkip: (actionId: string) => void;
 }
 
 const inputClass =
@@ -47,6 +48,7 @@ export function QuestionCard({
   options,
   hint,
   onSubmit,
+  onSkip,
 }: QuestionCardProps) {
   const { t } = useTranslation();
   const [textAnswer, setTextAnswer] = useState("");
@@ -120,10 +122,18 @@ export function QuestionCard({
             dangerouslySetInnerHTML={{ __html: renderMath(question) }}
           />
 
-          {/* Answer type badge */}
-          <span className="inline-block text-[9px] px-1 py-0.5 rounded bg-accent-surface text-accent mb-1.5">
-            {answerTypeLabel[answerType] ?? answerType}
-          </span>
+          {/* Answer type badge & skip */}
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="inline-block text-[9px] px-1 py-0.5 rounded bg-accent-surface text-accent">
+              {answerTypeLabel[answerType] ?? answerType}
+            </span>
+            <button
+              onClick={() => onSkip(actionId)}
+              className="text-[9px] px-1.5 py-0.5 rounded text-panel-muted hover:text-panel-text hover:bg-panel-border transition-colors"
+            >
+              {t("question.skip")}
+            </button>
+          </div>
 
           {/* Hint */}
           {hint && (

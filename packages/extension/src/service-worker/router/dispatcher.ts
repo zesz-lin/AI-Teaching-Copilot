@@ -408,6 +408,9 @@ async function handleInternal(
       }
 
       session.resolveAnswer(payload.actionId, payload.answer);
+      if (!payload.answer) {
+        session.engine.skip(payload.actionId);
+      }
       const ok = buildResponse(msg.id, "sw", msg.source, { type: "OK" });
       respondToSource(msg, ok, sidepanelPort, csRespond);
       break;

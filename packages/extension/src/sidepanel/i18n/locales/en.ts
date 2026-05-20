@@ -77,6 +77,23 @@ const en: Record<string, string> = {
 
   "message.steps_label": "📋 {count} teaching steps",
   "message.steps_more": "...and {count} more",
+
+  "question.skip": "Skip",
+
+  "system.ggb_ready": "✅ GeoGebra is ready",
+  "system.ggb_disconnected": "⚠️ GeoGebra disconnected, please refresh the page",
+  "system.config_load_failed": "❌ Failed to load AI config",
+  "system.empty_response": "❌ AI returned an empty response",
+  "system.plan_failed": "❌ AI planning failed: {error}",
+  "system.plan_generated": "AI generated {count} teaching steps, starting execution…",
+  "system.request_failed": "❌ Request failed: {error}",
+  "system.control_failed": "❌ Control command failed: {error}",
+  "system.submit_failed": "❌ Failed to submit answer: {error}",
+  "system.canvas_cleared": "🫧 Canvas cleared",
+  "system.clear_failed": "❌ Failed to clear: {error}",
+  "system.no_rerun_query": "⚠️ No query to re-run",
+  "system.stopped": "⏹ Stopped",
+  "system.api_error": "❌ AI API error ({status}): {detail}",
 };
 
 export default en;

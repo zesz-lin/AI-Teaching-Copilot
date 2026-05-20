@@ -15,6 +15,7 @@ import { buildFewShotMessages } from "../../planner/examples";
 import type { ChatMessage } from "../../planner/types";
 import type { PlannerConfig } from "../../planner/types";
 import { loadConfig } from "../../planner/config-store";
+import { t } from "../i18n";
 
 let _channel: Channel | null = null;
 let _eventsWired = false;
@@ -61,11 +62,11 @@ export function useChannel() {
         // ── Bridge events ──────────────────────────
 
         case "GGB_READY":
-          store.addSystemMessage("✅ GeoGebra 已就绪");
+          store.addSystemMessage(t("system.ggb_ready"));
           break;
         case "GGB_UNLOADED":
         case "SESSION_EXPIRED":
-          store.addSystemMessage("⚠️ GeoGebra 已断开，请刷新 GeoGebra 页面后重试");
+          store.addSystemMessage(t("system.ggb_disconnected"));
           store.setIsRunning(false);
           store.setExecState(null);
           break;
@@ -138,7 +139,7 @@ export function useChannel() {
         // 1. Load config
         const cfg = await loadConfig();
         if (!cfg) {
-          store.addSystemMessage("❌ 无法加载 AI 配置");
+          store.addSystemMessage(t("system.config_load_failed"));
           return;
         }
 
@@ -184,21 +185,21 @@ export function useChannel() {
 
         if (!resp.ok) {
           const errText = await resp.text().catch(() => "");
-          store.addSystemMessage(`❌ AI API 错误 (${resp.status}): ${errText.slice(0, 200)}`);
+          store.addSystemMessage(t("system.api_error", { status: String(resp.status), detail: errText.slice(0, 200) }));
           return;
         }
 
         const json = await resp.json();
         const content = json.choices?.[0]?.message?.content;
         if (!content) {
-          store.addSystemMessage("❌ AI 返回了空响应");
+          store.addSystemMessage(t("system.empty_response"));
           return;
         }
 
         // 5. Parse response
         const parsed = parsePlannerResponse(content);
         if (!parsed.success) {
-          store.addSystemMessage(`❌ AI 规划失败: ${parsed.error}`);
+          store.addSystemMessage(t("system.plan_failed", { error: parsed.error }));
           return;
         }
 
@@ -214,11 +215,11 @@ export function useChannel() {
           store.addSystemMessage(`❌ ${planResp.detail}`);
         } else if (planResp.type === "OK") {
           const stepCount = parsed.data.actions.length;
-          store.setStreamContent(`AI 已生成 ${stepCount} 步教学计划，开始执行…`);
+          store.setStreamContent(t("system.plan_generated", { count: stepCount }));
           store.finishStreaming();
         }
       } catch (err) {
-        store.addSystemMessage(`❌ 请求失败: ${toErrorMessage(err)}`);
+        store.addSystemMessage(t("system.request_failed", { error: toErrorMessage(err) }));
       }
     },
     [channel]
@@ -237,7 +238,7 @@ export function useChannel() {
         return true;
       } catch (err) {
         useStore.getState().addSystemMessage(
-          `❌ 控制命令失败: ${toErrorMessage(err)}`
+          t("system.control_failed", { error: toErrorMessage(err) })
         );
         return false;
       }
@@ -257,7 +258,7 @@ export function useChannel() {
         }
       } catch (err) {
         store.addSystemMessage(
-          `❌ 提交答案失败: ${toErrorMessage(err)}`
+          t("system.submit_failed", { error: toErrorMessage(err) })
         );
       }
     },
@@ -270,9 +271,9 @@ export function useChannel() {
     try {
       await channel.request({ type: "CLEAR_ALL" });
       await channel.request({ type: "CLEAR_SESSION" });
-      useStore.getState().addSystemMessage("🫧 画布已清除");
+      useStore.getState().addSystemMessage(t("system.canvas_cleared"));
     } catch (err) {
-      useStore.getState().addSystemMessage(`❌ 清除失败: ${toErrorMessage(err)}`);
+      useStore.getState().addSystemMessage(t("system.clear_failed", { error: toErrorMessage(err) }));
     }
   }, [channel]);
 
@@ -280,20 +281,36 @@ export function useChannel() {
     if (lastQuery.current) {
       await sendQuery(lastQuery.current);
     } else {
-      useStore.getState().addSystemMessage("⚠️ 没有可重新执行的查询");
+      useStore.getState().addSystemMessage(t("system.no_rerun_query"));
     }
   }, [channel, sendQuery]);
 
   const stop = useCallback(async () => {
     const ok = await sendEngineControl("abort");
-    if (ok) useStore.getState().addSystemMessage("⏹ 已停止");
+    if (ok) useStore.getState().addSystemMessage(t("system.stopped"));
   }, [sendEngineControl]);
+
+  const skipQuestion = useCallback(
+    async (actionId: string) => {
+      const store = useStore.getState();
+      store.clearActiveQuestion();
+      try {
+        await channel.request({ type: "STUDENT_ANSWER", actionId, answer: "" });
+      } catch (err) {
+        store.addSystemMessage(
+          t("system.submit_failed", { error: toErrorMessage(err) })
+        );
+      }
+    },
+    [channel]
+  );
 
   return {
     channel,
     sendQuery,
     sendEngineControl,
     submitAnswer,
+    skipQuestion,
     clearCanvas,
     rerun,
     stop,
