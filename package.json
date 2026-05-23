@@ -4,7 +4,7 @@
   "private": true,
   "description": "GeoGebra AI Teaching Copilot — MV3 Browser Extension",
   "scripts": {
-    "dev": "node scripts/build.js",
+    "dev": "node scripts/build.js --watch",
     "build": "node scripts/build.js",
     "typecheck": "tsc --noEmit --project config/tsconfig.base.json",
     "test": "vitest run",
