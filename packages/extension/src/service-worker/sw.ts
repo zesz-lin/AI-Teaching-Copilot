@@ -21,7 +21,11 @@ chrome.runtime.onConnect.addListener((port) => {
   setSessionsPort(port);
 
   port.onMessage.addListener((msg: AppMessage) => {
-    dispatch(msg, sidepanelPort!).catch((err) => {
+    if (!sidepanelPort) {
+      console.warn("[SW] Received message but sidepanelPort is null, ignoring");
+      return;
+    }
+    dispatch(msg, sidepanelPort).catch((err) => {
       console.error("[SW] dispatch error:", err);
     });
   });
@@ -44,7 +48,11 @@ chrome.runtime.onMessage.addListener(
     if (!sender.tab || msg.source !== "cs") return;
     if (!sender.tab.id) return;
 
-    dispatch(msg, sidepanelPort!, sender.tab.id, respond).catch((err) => {
+    if (!sidepanelPort) {
+      console.warn("[SW] Received CS message but sidepanelPort is null, ignoring");
+      return;
+    }
+    dispatch(msg, sidepanelPort, sender.tab.id, respond).catch((err) => {
       console.error("[SW] dispatch error:", err);
     });
     return true; // Keep respond callback alive for async

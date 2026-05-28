@@ -295,6 +295,13 @@ export class ExecutionEngine {
     return this.state;
   }
 
+  /** ID of the currently running action, if any */
+  getCurrentActionId(): string | null {
+    const all = this.queue.all();
+    const running = all.find((e) => e.state === ActionState.RUNNING);
+    return running?.action.id ?? null;
+  }
+
   /** ID of the last completed action, if any — used for single-step undo */
   getLastCompletedActionId(): string | null {
     const completed = this.rollbackMgr.getCompleted();
@@ -307,10 +314,13 @@ export class ExecutionEngine {
 
   /** Produce a compact snapshot for chrome.storage.session */
   serialize(): SerializedEngine {
+    if (!this.plan) {
+      throw new Error("Cannot serialize engine: no plan loaded");
+    }
     const completed = this.rollbackMgr.getCompleted();
     return {
       state: this.state,
-      plan: this.plan!,
+      plan: this.plan,
       queueSnapshot: this.queue.toJSON(),
       rollbackHistory: completed.map((ctx) => ({
         actionId: ctx.action.id,

@@ -245,7 +245,7 @@ h4.md-heading { font-size: 1em; }
 }
 
 .md-table tr:nth-child(even) td {
-  background: var(--panel-surface)/30;
+  background: color-mix(in srgb, var(--panel-surface) 30%, transparent);
 }
 
 .assistant-message .md-heading {

@@ -260,10 +260,4 @@ export const useStore = create<SidepanelState>((set, get) => ({
     }),
 }));
 
-// Apply dark mode on module load (before first render)
-const initialDark = getInitialDarkMode();
-if (initialDark) {
-  document.documentElement.classList.add("dark");
-} else {
-  document.documentElement.classList.remove("dark");
-}
+// Dark mode is applied by App component via useEffect (not at module load)

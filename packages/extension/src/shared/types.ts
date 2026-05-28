@@ -62,4 +62,5 @@ export type ErrorCode =
   | "NO_SESSION"
   | "NOTHING_TO_UNDO"
   | "SESSION_EXPIRED"
-  | "UNKNOWN_ACTION";
+  | "UNKNOWN_ACTION"
+  | "EXEC_FAILED";

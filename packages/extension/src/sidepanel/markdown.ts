@@ -5,6 +5,48 @@
 // ============================================================
 
 import katex from "katex";
+import DOMPurify from "dompurify";
+
+export function renderMath(text: string): string {
+  const mathBlocks: string[] = [];
+
+  let out = text;
+
+  // Render display math ($$...$$) first — on raw unescaped text
+  out = out.replace(/\$\$([^$]+)\$\$/g, (_sub, expr) => {
+    try {
+      const rendered = katex.renderToString(expr.trim(), { throwOnError: false, displayMode: true });
+      mathBlocks.push(rendered);
+      return `\x00M${mathBlocks.length - 1}\x00`;
+    } catch {
+      return `<span class="md-math">$$${expr}$$</span>`;
+    }
+  });
+
+  // Render inline math ($...$) — on raw unescaped text
+  out = out.replace(/\$([^$]+)\$/g, (_sub, expr) => {
+    try {
+      const rendered = katex.renderToString(expr.trim(), { throwOnError: false, displayMode: false });
+      mathBlocks.push(rendered);
+      return `\x00M${mathBlocks.length - 1}\x00`;
+    } catch {
+      return `<span class="md-math">$${expr}$</span>`;
+    }
+  });
+
+  // Escape HTML on the remaining non-math text
+  out = out
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  // Restore KaTeX-rendered math blocks
+  out = out.replace(/\x00M(\d+)\x00/g, (_sub, idx) => {
+    return mathBlocks[parseInt(idx)] ?? "";
+  });
+
+  return out;
+}
 
 export function renderMarkdown(text: string): string {
   if (!text) return "";
@@ -175,7 +217,7 @@ export function renderMarkdown(text: string): string {
   flushList();
   flushTable();
 
-  return out.join("\n");
+  return DOMPurify.sanitize(out.join("\n"));
 }
 
 // ── Inline formatting ────────────────────────────────────────

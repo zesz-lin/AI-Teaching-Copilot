@@ -50,13 +50,14 @@ export class LabelResolver {
   private generate(typeHint: string): string {
     const prefix = typeChar(typeHint);
 
-    while (true) {
+    for (let i = 0; i < 1000; i++) {
       this.tracker.counter++;
       const label = `${this.prefix}${prefix}${this.tracker.counter}`;
       if (!this.tracker.active.has(label)) {
         return label;
       }
     }
+    throw new Error(`LabelResolver: exhausted ${1000} attempts to generate a unique label with prefix "${this.prefix}${prefix}"`);
   }
 
   // ==========================================================

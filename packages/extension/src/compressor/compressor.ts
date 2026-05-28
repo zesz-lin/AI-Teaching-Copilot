@@ -181,6 +181,6 @@ let _instance: StateCompressor | null = null;
 
 export function getCompressor(config?: Partial<CompressorConfig>): StateCompressor {
   if (config) _instance = new StateCompressor(config);
-  if (!_instance) _instance = new StateCompressor();
+  if (!_instance) _instance = new StateCompressor(); // auto-create with defaults
   return _instance;
 }

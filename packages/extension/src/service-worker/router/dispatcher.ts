@@ -38,8 +38,17 @@ async function ensureContentScript(tabId: number): Promise<void> {
       target: { tabId },
       files: ["cs.js"],
     });
-    // Give CS time to initialize and inject bridge.js into the page
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    // Poll for bridge readiness instead of fixed delay
+    for (let i = 0; i < 20; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      try {
+        await chrome.tabs.sendMessage(tabId, { type: "PING" });
+        return; // Bridge is ready
+      } catch {
+        // Not ready yet, keep polling
+      }
+    }
+    console.warn(`[Dispatcher] Bridge not ready after polling tab ${tabId}, proceeding anyway`);
   } catch (err) {
     console.error(`[Dispatcher] Failed to inject CS into tab ${tabId}:`, err);
   }
@@ -363,12 +372,11 @@ async function handleInternal(
             });
           }
           break;
-        case "skip":
-          session.engine.skip(
-            session.engine.getStatus().currentStep >= 0
-              ? session.engine.getStatus().currentStep.toString()
-              : ""
-          );
+        case "skip": {
+          const currentActionId = session.engine.getCurrentActionId();
+          if (currentActionId) {
+            session.engine.skip(currentActionId);
+          }
           if (session.engine.getState() === "PAUSED") {
             session.engine.start();
             session.engine.run().catch((err) => {
@@ -376,6 +384,7 @@ async function handleInternal(
             });
           }
           break;
+        }
         case "rollback": {
           const actionId = session.engine.getLastCompletedActionId();
           if (!actionId) {
@@ -535,7 +544,6 @@ async function fetchCompressedState(tabId: number): Promise<string | undefined> 
     let topic: string | undefined;
     let aiLabels: string[] = [];
     try {
-      const { getSession } = await import("../session/store");
       const session = await getSession(tabId);
       if (session) {
         topic = session.context.topic;

@@ -15,6 +15,8 @@ export class ExecutionLogger {
   private listeners: Array<(entry: LogEntry) => void> = [];
   private persistKey: string | null = null;
 
+  private persistTimer: ReturnType<typeof setTimeout> | null = null;
+
   constructor(persistKey?: string) {
     if (persistKey) {
       this.persistKey = `engine_log_${persistKey}`;
@@ -104,14 +106,18 @@ export class ExecutionLogger {
   // Persistence
   // ==========================================================
 
-  /** Persist current entries to chrome.storage */
+  /** Persist current entries to chrome.storage (debounced) */
   private persist(): void {
     if (!this.persistKey) return;
-    try {
-      chrome.storage?.local?.set?.({ [this.persistKey]: this.entries });
-    } catch {
-      // Not in extension context — ignore
-    }
+    if (this.persistTimer) clearTimeout(this.persistTimer);
+    this.persistTimer = setTimeout(() => {
+      this.persistTimer = null;
+      try {
+        chrome.storage?.local?.set?.({ [this.persistKey!]: this.entries });
+      } catch {
+        // Not in extension context — ignore
+      }
+    }, 300);
   }
 
   /** Load entries from chrome.storage */

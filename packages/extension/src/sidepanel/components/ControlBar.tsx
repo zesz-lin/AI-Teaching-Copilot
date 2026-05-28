@@ -22,27 +22,27 @@ export function ControlBar({
   return (
     <div className="flex items-center gap-1 px-2 py-1.5 border-b border-panel-border bg-panel-surface/50 flex-wrap">
       {isRunning && !isPaused && (
-        <button onClick={onStop} className={`${btnBase} bg-danger-surface text-danger`}>
+        <button onClick={onStop} className={`${btnBase} bg-danger-surface text-danger`} aria-label={t("control.stop")}>
           <StopIcon /> {t("control.stop")}
         </button>
       )}
       {isPaused && (
         <>
-          <button onClick={onResume} className={`${btnBase} bg-success-surface text-success`}>
+          <button onClick={onResume} className={`${btnBase} bg-success-surface text-success`} aria-label={t("control.resume")}>
             <PlayIcon /> {t("control.resume")}
           </button>
-          <button onClick={onSkip} className={`${btnBase} text-warn hover:bg-warn-surface`}>
+          <button onClick={onSkip} className={`${btnBase} text-warn hover:bg-warn-surface`} aria-label={t("control.skip")}>
             <SkipIcon /> {t("control.skip")}
           </button>
         </>
       )}
       {!isRunning && (
-        <button onClick={onRerun} className={`${btnBase} text-panel-text hover:bg-panel-border/50`}>
+        <button onClick={onRerun} className={`${btnBase} text-panel-text hover:bg-panel-border/50`} aria-label={t("control.rerun")}>
           <RerunIcon /> {t("control.rerun")}
         </button>
       )}
 
-      <button onClick={onClear} className={`${btnBase} text-panel-text hover:bg-panel-border/50`}>
+      <button onClick={onClear} className={`${btnBase} text-panel-text hover:bg-panel-border/50`} aria-label={t("control.clear")}>
         <ClearIcon /> {t("control.clear")}
       </button>
 

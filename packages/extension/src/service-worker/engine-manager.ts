@@ -12,9 +12,10 @@
 
 import { ExecutionEngine, type SerializedEngine } from "../engine/engine";
 import type { ActionExecutor } from "../engine/transaction";
+import { EngineState } from "../engine/types";
 import type { ActionSnapshot, InverseAction } from "../engine/types";
 import type { Action, LessonPlan } from "../dsl/types";
-import type { AppMessage } from "../shared/messages";
+import type { AppMessage, EventPayload } from "../shared/messages";
 import { buildRequest, buildResponse, buildEvent } from "../shared/messages";
 import type { GgbCommand } from "../shared/types";
 import { LabelResolver } from "../adapter/naming";
@@ -51,6 +52,8 @@ interface PauseEventCondition {
 // ============================================================
 
 class SwActionExecutor implements ActionExecutor {
+  private resolver = new LabelResolver("AI_");
+
   constructor(
     private tabId: number,
     public port: chrome.runtime.Port | null,
@@ -97,11 +100,10 @@ class SwActionExecutor implements ActionExecutor {
   private async executeGeometry(
     action: Action
   ): Promise<{ createdLabels: string[]; deletedLabels: string[] }> {
-    const resolver = new LabelResolver("AI_");
     const buildResult = buildCommand(
       action.type as "FUNCTION_PLOT" | "POINT" | "LINE" | "CIRCLE" | "POLYGON" | "SLIDER" | "DELETE" | "CLEAR",
       action.params as unknown as Record<string, unknown>,
-      resolver
+      this.resolver
     );
 
     const requestMsg = buildRequest("sw", "bridge", {
@@ -113,7 +115,7 @@ class SwActionExecutor implements ActionExecutor {
       })),
     });
 
-    let response: any;
+    let response: AppMessage;
     try {
       response = await chrome.tabs.sendMessage(this.tabId, requestMsg);
     } catch {
@@ -264,7 +266,7 @@ class SwActionExecutor implements ActionExecutor {
 
   private postEvent(payload: Record<string, unknown>): void {
     if (!this.port) return;
-    const event = buildEvent("sw", "sidepanel", payload as any);
+    const event = buildEvent("sw", "sidepanel", payload as EventPayload);
     this.port.postMessage(event);
   }
 }
@@ -583,7 +585,7 @@ export function createSession(
 
   const session = new EngineSession(tabId, port, (event) => {
     if (port) {
-      const msg = buildEvent("sw", "sidepanel", event as any);
+      const msg = buildEvent("sw", "sidepanel", event as EventPayload);
       port.postMessage(msg);
     }
   });
@@ -626,7 +628,7 @@ export async function restoreSession(
 
   // Downgrade RUNNING → PAUSED (SW was killed mid-execution)
   if (snap.state === "RUNNING") {
-    snap.state = "PAUSED" as any;
+    snap.state = EngineState.PAUSED;
     snap.serializedAt = Date.now();
   }
 

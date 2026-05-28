@@ -6,7 +6,7 @@ import { useEffect, useCallback, useRef } from "react";
 import { createChannel, type Channel } from "../messaging/channel";
 import { useStore } from "../store";
 import type { EventPayload } from "../../shared/messages";
-import { toErrorMessage } from "../../shared/utils";
+import { toErrorMessage, isReasoningModel } from "../../shared/utils";
 import { EngineState } from "../../engine/types";
 import type { LogEntry } from "../../engine/types";
 import { parsePlannerResponse } from "../../planner/parser";
@@ -42,6 +42,7 @@ function makeLogEntry(message: string, actionId?: string, error?: string): LogEn
 export function useChannel() {
   const channel = useRef(getChannel()).current;
   const lastQuery = useRef("");
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Wire bridge events → store (once)
   useEffect(() => {
@@ -124,16 +125,18 @@ export function useChannel() {
 
   // ── AI Query (runs in sidepanel, not SW — avoids SW kill timeout) ──
 
-  function isReasoner(model: string): boolean {
-    return /reasoner|o1|o3|o4/i.test(model);
-  }
-
   const sendQuery = useCallback(
     async (text: string) => {
       const store = useStore.getState();
       store.addUserMessage(text);
       store.startStreaming();
       lastQuery.current = text;
+
+      // Abort any previous in-flight request
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      const { signal } = controller;
 
       try {
         // 1. Load config
@@ -142,6 +145,8 @@ export function useChannel() {
           store.addSystemMessage(t("system.config_load_failed"));
           return;
         }
+
+        if (signal.aborted) return;
 
         // 2. Get canvas context from SW
         let contextHint: string | undefined;
@@ -155,22 +160,24 @@ export function useChannel() {
           }
         } catch { /* proceed without context */ }
 
+        if (signal.aborted) return;
+
         // 3. Build messages
         const systemContent = buildSystemPrompt("zh");
-        const isReasoning = /deepseek.*reasoner/i.test(cfg.model);
+        const isReasoning = isReasoningModel(cfg.model);
         const messages: ChatMessage[] = [
           { role: isReasoning ? "user" : "system", content: systemContent },
           ...buildFewShotMessages(),
           { role: "user", content: buildUserPrompt(text, "beginner", contextHint) },
         ];
 
-        // 4. Call AI API directly from sidepanel
+        // 4. Call AI API directly from sidepanel with AbortController
         const body: Record<string, unknown> = {
           model: cfg.model,
           messages,
           max_tokens: cfg.maxTokens,
         };
-        if (!isReasoner(cfg.model)) {
+        if (!isReasoningModel(cfg.model)) {
           body.temperature = cfg.temperature;
         }
 
@@ -181,6 +188,7 @@ export function useChannel() {
             Authorization: `Bearer ${cfg.apiKey}`,
           },
           body: JSON.stringify(body),
+          signal,
         });
 
         if (!resp.ok) {
@@ -195,6 +203,8 @@ export function useChannel() {
           store.addSystemMessage(t("system.empty_response"));
           return;
         }
+
+        if (signal.aborted) return;
 
         // 5. Parse response
         const parsed = parsePlannerResponse(content);
@@ -219,6 +229,7 @@ export function useChannel() {
           store.finishStreaming();
         }
       } catch (err) {
+        if (signal.aborted) return;
         store.addSystemMessage(t("system.request_failed", { error: toErrorMessage(err) }));
       }
     },
@@ -286,6 +297,7 @@ export function useChannel() {
   }, [channel, sendQuery]);
 
   const stop = useCallback(async () => {
+    abortControllerRef.current?.abort();
     const ok = await sendEngineControl("abort");
     if (ok) useStore.getState().addSystemMessage(t("system.stopped"));
   }, [sendEngineControl]);

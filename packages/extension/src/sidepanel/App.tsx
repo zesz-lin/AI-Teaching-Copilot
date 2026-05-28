@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useMemo } from "react";
 import { useStore } from "./store";
 import { useChannel } from "./hooks/useChannel";
 import { useTranslation } from "./i18n";
@@ -10,16 +10,27 @@ import { QuestionCard } from "./components/QuestionCard";
 
 type Panel = "chat" | "settings";
 
+const TABS: { key: Panel; labelKey: string }[] = [
+  { key: "chat", labelKey: "app.tab.chat" },
+  { key: "settings", labelKey: "app.tab.settings" },
+];
+
 export default function App() {
   const { t } = useTranslation();
 
-  const tabs: { key: Panel; label: string }[] = [
-    { key: "chat", label: t("app.tab.chat") },
-    { key: "settings", label: t("app.tab.settings") },
-  ];
+  const tabs = useMemo(() => TABS.map((tab) => ({ key: tab.key, label: t(tab.labelKey) })), [t]);
   const activePanel = useStore((s) => s.activePanel);
   const setActivePanel = useStore((s) => s.setActivePanel);
   const darkMode = useStore((s) => s.darkMode);
+
+  // Apply dark mode to document (moved from store module-level side effect)
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [darkMode]);
   const toggleDarkMode = useStore((s) => s.toggleDarkMode);
   const isRunning = useStore((s) => s.isRunning);
   const execState = useStore((s) => s.execState);
@@ -76,6 +87,7 @@ export default function App() {
           onClick={toggleDarkMode}
           className="p-1 rounded text-panel-muted hover:bg-panel-surface transition-colors active:scale-95"
           title={darkMode ? t("app.darkmode.tooltip.light") : t("app.darkmode.tooltip.dark")}
+          aria-label={darkMode ? t("app.darkmode.tooltip.light") : t("app.darkmode.tooltip.dark")}
         >
           {darkMode ? <SunIcon /> : <MoonIcon />}
         </button>

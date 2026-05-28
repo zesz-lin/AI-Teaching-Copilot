@@ -14,16 +14,7 @@ import type {
   ChatCompletionResponse,
 } from "./types";
 import { DEFAULT_PLANNER_CONFIG } from "./types";
-import { toErrorMessage } from "../shared/utils";
-
-function isReasoningModel(model: string): boolean {
-  return /reasoner|o1|o3|o4/i.test(model);
-}
-
-function needsSystemAsUser(model: string): boolean {
-  // DeepSeek reasoner and some reasoning models don't support system role
-  return /deepseek.*reasoner/i.test(model) || /reasoner/i.test(model);
-}
+import { toErrorMessage, isReasoningModel, needsSystemAsUser } from "../shared/utils";
 
 // ============================================================
 // Planner

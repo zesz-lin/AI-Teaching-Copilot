@@ -200,7 +200,12 @@ export class ActionQueue {
   private hasUnsatisfiedDeps(entry: QueueEntry): boolean {
     for (const depId of entry.dependencies) {
       const dep = this.get(depId);
-      if (!dep || dep.state !== ActionState.COMPLETED) {
+      if (!dep) return true;
+      if (
+        dep.state !== ActionState.COMPLETED &&
+        dep.state !== ActionState.SKIPPED &&
+        dep.state !== ActionState.ROLLED_BACK
+      ) {
         return true;
       }
     }
