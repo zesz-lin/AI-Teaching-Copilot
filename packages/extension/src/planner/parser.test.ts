@@ -203,6 +203,49 @@ describe("parsePlannerResponse", () => {
     expect(result.success).toBe(true);
   });
 
+  it("handles AI prepending text before JSON", () => {
+    const raw = "Here's the generated lesson plan:\n\n" + JSON.stringify({
+      actions: [
+        { version: "1.0.0", id: "step-1", type: "POINT", params: { type: "POINT", coords: [1, 2], label: "A" } },
+      ],
+      summary: "test",
+    });
+    const result = parsePlannerResponse(raw);
+    expect(result.success).toBe(true);
+  });
+
+  it("handles JSON with braces inside string values", () => {
+    const raw = JSON.stringify({
+      actions: [
+        {
+          version: "1.0.0",
+          id: "step-1",
+          type: "EXPLAIN",
+          params: { type: "EXPLAIN", text: "function f(x) = { x + 1 } has a brace", format: "plain" },
+        },
+      ],
+      summary: "test",
+    });
+    const result = parsePlannerResponse(raw);
+    expect(result.success).toBe(true);
+  });
+
+  it("shows specific field name for missing required params", () => {
+    const raw = JSON.stringify({
+      actions: [
+        { version: "1.0.0", id: "step-1", type: "FUNCTION_PLOT", params: { type: "FUNCTION_PLOT" } },
+      ],
+      summary: "missing fields",
+    });
+    const result = parsePlannerResponse(raw);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain("fn");
+      expect(result.error).toContain("variable");
+      expect(result.error).toContain("range");
+    }
+  });
+
   it("parses all 15 action types correctly", () => {
     const actions = [
       { type: "FUNCTION_PLOT", params: { type: "FUNCTION_PLOT", fn: "x^2", variable: "x", range: [-5, 5] } },

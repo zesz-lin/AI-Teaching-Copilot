@@ -26,7 +26,7 @@ export interface PlannerConfig {
 export const DEFAULT_PLANNER_CONFIG: Omit<PlannerConfig, "apiKey"> = {
   apiEndpoint: "https://api.openai.com/v1/chat/completions",
   model: "gpt-4o",
-  maxTokens: 4096,
+  maxTokens: 10000,
   temperature: 0.3,
   timeoutMs: 60_000,
 };

@@ -99,8 +99,13 @@ export function buildPoint(
   } else if (params.onObject) {
     expr = `${label} = Point(${params.onObject}, ${params.param ?? 0.5})`;
   } else if (params.expr) {
-    // Expression like midpoint: (x(A)+x(B))/2, (y(A)+y(B))/2
-    expr = `${label} = Point({${params.expr}})`;
+    if (params.expr.includes("(")) {
+      // Function call returning a point (e.g. Midpoint(A,B), Circumcenter(A,B,C))
+      expr = `${label} = ${params.expr}`;
+    } else {
+      // Coordinate expression: (x(A)+x(B))/2, (y(A)+y(B))/2
+      expr = `${label} = Point({${params.expr}})`;
+    }
   } else {
     throw new Error("POINT requires coords, intersection, onObject, or expr");
   }
@@ -137,11 +142,10 @@ export function buildLine(
     // e.g. "y = 2x + 1"
     expr = `${label}: ${params.expr}`;
   } else if (params.relation === "parallel" && params.through && params.target) {
-    // Perpendicular through point: Line(point, target_line) - perpendicular is built-in
-    // Parallel: no direct evalCommand, use Rotate approach
-    // Simplified: Perpendicular(Point, Line) is available
+    // GeoGebra's Line(point, line) creates a parallel line through point
     expr = `${label} = Line(${params.through[0]}, ${params.target})`;
-    // Note: GeoGebra's Line(point, line) creates a parallel line
+  } else if (params.relation === "perpendicular" && params.through && params.target) {
+    expr = `${label} = OrthogonalLine(${params.through[0]}, ${params.target})`;
   } else if (params.tangent && params.through) {
     const [x, y] = params.tangent.at;
     expr = `${label} = Tangent(${params.through[0]}, (${x}, ${y}))`;
@@ -190,8 +194,8 @@ export function buildCircle(
   if (params.color) {
     commands.push(...hexToRgbCommands(label, params.color!));
   }
-  if (params.fillColor) {
-    commands.push({ expr: `SetFilling(${label}, ${params.fillOpacity ?? 1})` });
+  if (params.fillOpacity !== undefined) {
+    commands.push({ expr: `SetFilling(${label}, ${params.fillOpacity})` });
   }
 
   return { commands, labels: [label] };
@@ -227,8 +231,8 @@ export function buildPolygon(
 
   const commands: GgbCommand[] = [{ expr }];
 
-  if (params.fillColor) {
-    commands.push(...hexToRgbCommands(label, params.fillColor));
+  if (params.fillOpacity !== undefined) {
+    commands.push({ expr: `SetFilling(${label}, ${params.fillOpacity})` });
   }
 
   return { commands, labels: [label] };

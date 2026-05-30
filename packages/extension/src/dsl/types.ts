@@ -97,7 +97,6 @@ export interface CircleParams {
   expr?: string;
   style?: LineStyle;
   color?: string;
-  fillColor?: string;
   fillOpacity?: number;
 }
 
@@ -113,7 +112,6 @@ export interface PolygonParams {
     center: string;
     vertex: string;
   };
-  fillColor?: string;
   fillOpacity?: number;
   showEdges?: boolean;
   edgeStyle?: LineStyle;

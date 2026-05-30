@@ -329,6 +329,23 @@ export class EngineSession {
     return true;
   }
 
+  /** Skip a pending answer: rejects instead of resolves so the engine paths through handleFailure */
+  skipAnswer(actionId: string): boolean {
+    const pending = this.pendingAnswers.get(actionId);
+    if (!pending) return false;
+    this.pendingAnswers.delete(actionId);
+    pending.reject(new Error("Skipped by user"));
+    return true;
+  }
+
+  /** Reject all pending answers (used on abort to unblock the engine) */
+  rejectAllPending(): void {
+    for (const [id, pending] of this.pendingAnswers) {
+      pending.reject(new Error("Execution aborted"));
+    }
+    this.pendingAnswers.clear();
+  }
+
   /** Check if there's a pending question waiting for this action */
   hasPending(actionId: string): boolean {
     return this.pendingAnswers.has(actionId);
@@ -556,6 +573,9 @@ export class EngineSession {
           pauseReason: reason,
         });
         this.schedulePersist();
+      },
+      onAbort: () => {
+        this.rejectAllPending();
       },
       onComplete: () => {
         this.onEvent({

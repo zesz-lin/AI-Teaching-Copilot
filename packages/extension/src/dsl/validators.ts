@@ -78,7 +78,6 @@ const circleSchema = z.object({
   expr: z.string().optional(),
   style: lineStyleSchema.optional(),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-  fillColor: z.string().regex(/^#[0-9a-fA-F]{6,8}$/).optional(),
   fillOpacity: z.number().min(0).max(1).optional(),
 });
 
@@ -92,7 +91,6 @@ const polygonSchema = z.object({
     center: z.string(),
     vertex: z.string(),
   }).optional(),
-  fillColor: z.string().regex(/^#[0-9a-fA-F]{6,8}$/).optional(),
   fillOpacity: z.number().min(0).max(1).optional(),
   showEdges: z.boolean().optional(),
   edgeStyle: lineStyleSchema.optional(),

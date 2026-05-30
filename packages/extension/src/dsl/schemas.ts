@@ -100,7 +100,6 @@ const circleDef: Schema = {
     expr: { type: "string" },
     style: lineStyleDef,
     color: { type: "string", pattern: "^#[0-9a-fA-F]{6}$" },
-    fillColor: { type: "string", pattern: "^#[0-9a-fA-F]{6,8}$" },
     fillOpacity: { type: "number", minimum: 0, maximum: 1 },
   },
 };
@@ -122,7 +121,6 @@ const polygonDef: Schema = {
         vertex: { type: "string" },
       },
     },
-    fillColor: { type: "string", pattern: "^#[0-9a-fA-F]{6,8}$" },
     fillOpacity: { type: "number", minimum: 0, maximum: 1 },
     showEdges: { type: "boolean" },
     edgeStyle: lineStyleDef,
@@ -143,7 +141,7 @@ const sliderDef: Schema = {
     animate: { type: "boolean" },
     speed: { type: "number", minimum: 0, exclusiveMinimum: true },
     direction: { enum: ["inc", "dec", "oscillate"] },
-    width: { type: "number", minimum: 0, exclusiveMinimum: true },
+    width: { type: "integer", minimum: 50, maximum: 500 },
     position: { type: "array", minItems: 2, maxItems: 2, items: { type: "number" } },
   },
 };

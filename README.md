@@ -143,27 +143,29 @@ AI 调用在**侧边栏**中直接发起（而非 Service Worker），以规避 
 ## DSL 动作类型（15 种）
 
 ### 几何动作（8 种）
-| 动作 | 参数 |
+
+| 动作 | 完整参数 |
 |---|---|
-| `FUNCTION_PLOT` | fn, variable, range, label, style, color |
-| `POINT` | coords / intersection / onObject / expr, label |
-| `LINE` | through / slope / expr / tangent, label, style |
-| `CIRCLE` | center+radius / throughPoint / diameter, label |
-| `POLYGON` | vertices / coords / regular, fillColor |
-| `SLIDER` | name, min, max, step, initial, animate |
-| `DELETE` | labels[] |
-| `CLEAR` | scope (all / selected), keep[] |
+| `FUNCTION_PLOT` | `fn`, `variable`, `range:[min,max]`, `label?`, `style?{thickness?,dash?}`, `color?` |
+| `POINT` | `coords?[x,y]`, `intersection?[A,B]`, `onObject?`, `param?`, `expr?`, `label?`, `snap?("none"\|"grid"\|"intersection")`, `color?`, `size?(1-9)` |
+| `LINE` | `through?[A,B]`, `slope?`, `expr?`, `relation?("parallel"\|"perpendicular")`, `target?`, `tangent?{at:[x,y]}`, `label?`, `style?`, `color?` |
+| `CIRCLE` | `center?`, `radius?`, `throughPoint?`, `diameter?[p1,p2]`, `through?[p1,p2,p3]`, `expr?`, `label?`, `style?`, `color?`, `fillOpacity?` |
+| `POLYGON` | `vertices?[A,B,C]`, `coords?[[x,y],...]`, `regular?{n,center,vertex}`, `label?`, `fillOpacity?`, `showEdges?`, `edgeStyle?` |
+| `SLIDER` | `name`, `min`, `max`, `step`, `initial?`, `unit?(""\|"°"\|"rad")`, `animate?`, `speed?`, `direction?("inc"\|"dec"\|"oscillate")`, `width?(50-500)`, `position?[x,y]` |
+| `DELETE` | `labels:[A,B]` |
+| `CLEAR` | `scope:("all"\|"selected")`, `keep?[A,B]` |
 
 ### 教学动作（7 种）
-| 动作 | 参数 |
+
+| 动作 | 完整参数 |
 |---|---|
-| `EXPLAIN` | text, format (plain/markdown/latex) |
-| `HIGHLIGHT` | targets[], effect (glow/pulse/blink), duration |
-| `FOCUS_VIEW` | target (objects/region/zoom), xRange, yRange |
-| `ANIMATE_STEP` | animate (slider), from, to, duration, easing |
-| `PAUSE` | until (click/duration/object_click/interaction) |
-| `ASK_OBSERVATION` | question, answerType (text/choice/number/coords) |
-| `SHOW_RELATION` | between[], relation (intersection/parallel/…) |
+| `EXPLAIN` | `text`, `format?("plain"\|"markdown"\|"latex")`, `tts?`, `relatedObjects?[A,B]`, `display?("inline"\|"bubble"\|"callout")`, `pointTo?[x,y]` |
+| `HIGHLIGHT` | `targets:[A,B]`, `effect:("glow"\|"pulse"\|"color"\|"outline"\|"blink")`, `duration?`, `repeat?`, `color?`, `restore?` |
+| `FOCUS_VIEW` | `target:("objects"\|"region"\|"reset"\|"zoom_in"\|"zoom_out")`, `objects?[A,B]`, `xRange?[min,max]`, `yRange?[min,max]`, `padding?`, `animation?` |
+| `ANIMATE_STEP` | `animate:"label"`, `from?`, `to?`, `along?`, `duration`, `easing?("linear"\|"ease-in"\|"ease-out"\|"ease-in-out")`, `play?` |
+| `PAUSE` | `until:("click"\|"duration"\|"object_click"\|"interaction"\|"ggb_ready")`, `duration?`, `target?`, `hint?` |
+| `ASK_OBSERVATION` | `question`, `answerType:("text"\|"choice"\|"number"\|"coords")`, `options?["..."]`, `hint?`, `expectedAnswer?`, `required?`, `storeKey?` |
+| `SHOW_RELATION` | `between:[A,B]`, `relation:("intersection"\|"parallel"\|"perpendicular"\|"tangent"\|"equal"\|"congruent"\|"similar"\|"midpoint"\|"bisector")`, `at?[A]`, `measure?`, `style?("text"\|"icon"\|"both")`, `duration?` |
 
 完整类型定义见 [`dsl/types.ts`](packages/extension/src/dsl/types.ts)，Zod 校验见 [`dsl/validators.ts`](packages/extension/src/dsl/validators.ts)。
 

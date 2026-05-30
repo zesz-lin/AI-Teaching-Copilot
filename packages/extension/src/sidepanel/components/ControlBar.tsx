@@ -8,6 +8,7 @@ interface Props {
   isPaused: boolean;
   onResume: () => void;
   onSkip: () => void;
+  onShowLog: () => void;
 }
 
 const btnBase =
@@ -15,7 +16,7 @@ const btnBase =
 
 export function ControlBar({
   onStop, onClear, onRerun,
-  isRunning, isPaused, onResume, onSkip,
+  isRunning, isPaused, onResume, onSkip, onShowLog,
 }: Props) {
   const { t } = useTranslation();
 
@@ -44,6 +45,10 @@ export function ControlBar({
 
       <button onClick={onClear} className={`${btnBase} text-panel-text hover:bg-panel-border/50`} aria-label={t("control.clear")}>
         <ClearIcon /> {t("control.clear")}
+      </button>
+
+      <button onClick={onShowLog} className={`${btnBase} text-panel-text hover:bg-panel-border/50`} aria-label={t("app.tab.log")}>
+        <LogIcon /> {t("app.tab.log")}
       </button>
 
     </div>
@@ -90,6 +95,16 @@ function ClearIcon() {
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
       <path d="M3 3l6 6M9 3l-6 6" />
       <rect x="1" y="1" width="10" height="10" rx="2" />
+    </svg>
+  );
+}
+
+function LogIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="1" y="2" width="10" height="8" rx="1" />
+      <line x1="3" y1="5" x2="9" y2="5" />
+      <line x1="3" y1="7" x2="7" y2="7" />
     </svg>
   );
 }

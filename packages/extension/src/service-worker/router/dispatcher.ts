@@ -317,9 +317,10 @@ async function handleInternal(
         break;
       }
 
-      session.resolveAnswer(payload.actionId, payload.answer);
       if (!payload.answer) {
-        session.engine.skip(payload.actionId);
+        session.skipAnswer(payload.actionId);
+      } else {
+        session.resolveAnswer(payload.actionId, payload.answer);
       }
       const ok = buildResponse(msg.id, "sw", msg.source, { type: "OK" });
       respondToSource(msg, ok, sidepanelPort, csRespond);

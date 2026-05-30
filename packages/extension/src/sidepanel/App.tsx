@@ -6,9 +6,10 @@ import { ChatArea } from "./components/ChatArea";
 import { InputBox } from "./components/InputBox";
 import { ControlBar } from "./components/ControlBar";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { LogPanel } from "./components/LogPanel";
 import { QuestionCard } from "./components/QuestionCard";
 
-type Panel = "chat" | "settings";
+type Panel = "chat" | "settings" | "log";
 
 const TABS: { key: Panel; labelKey: string }[] = [
   { key: "chat", labelKey: "app.tab.chat" },
@@ -111,6 +112,7 @@ export default function App() {
         isPaused={execState?.isPaused ?? false}
         onResume={() => sendEngineControl("resume")}
         onSkip={() => sendEngineControl("skip")}
+        onShowLog={() => setActivePanel("log")}
       />
 
       {/* Status bar (when engine is running) */}
@@ -163,6 +165,7 @@ export default function App() {
       {/* Panel content */}
       <div key={animKey} className="flex-1 flex flex-col min-h-0 animate-fade-in-up">
         {activePanel === "chat" && <ChatArea />}
+        {activePanel === "log" && <LogPanel />}
         {activePanel === "settings" && <SettingsPanel />}
       </div>
 

@@ -43,12 +43,14 @@ export function buildSystemPrompt(lang: string = "zh"): string {
 
 3. LINE — 创建直线
    params: { type:"LINE", label?, through?[label1,label2], slope?, expr?, relation?, target?, tangent?, style?, color? }
+   relation:"parallel" → 过点作平行线，生成 Line(point, target)
+   relation:"perpendicular" → 过点作垂线，生成 OrthogonalLine(point, target)
 
 4. CIRCLE — 创建圆
-   params: { type:"CIRCLE", label?, center?, radius?, throughPoint?, diameter?[p1,p2], through?[p1,p2,p3], expr?, style?, color?, fillColor?, fillOpacity? }
+   params: { type:"CIRCLE", label?, center?, radius?, throughPoint?, diameter?[p1,p2], through?[p1,p2,p3], expr?, style?, color?, fillOpacity? }
 
 5. POLYGON — 创建多边形
-   params: { type:"POLYGON", label?, vertices?[label,label,label], coords?[[x,y],...], regular?{n,center,vertex}, fillColor?, fillOpacity?, showEdges?, edgeStyle? }
+   params: { type:"POLYGON", label?, vertices?[label,label,label], coords?[[x,y],...], regular?{n,center,vertex}, fillOpacity?, showEdges?, edgeStyle? }
 
 6. SLIDER — 创建参数滑块
    params: { type:"SLIDER", name:"a", min:-5, max:5, step:0.1, initial?, unit?(""|"°"|"rad"), animate?, speed?, direction?, width?, position? }
@@ -84,7 +86,9 @@ export function buildSystemPrompt(lang: string = "zh"): string {
     每个教学关键点都应有一个对应的提问
 
 15. SHOW_RELATION — 展示数学关系
-    params: { type:"SHOW_RELATION", between:["A","B"], relation:"intersection"|"parallel"|"perpendicular"|"tangent"|"equal"|"congruent"|"similar"|"midpoint"|"bisector", at?, measure?, style?, duration? }
+    params: { type:"SHOW_RELATION", between:["A","B","C"], relation:"intersection"|"parallel"|"perpendicular"|"tangent"|"equal"|"congruent"|"similar"|"midpoint"|"bisector", at?:["A"], measure?:true, style?:"text"|"icon"|"both", duration?:3000 }
+    at 的值必须是字符串数组 ["label"]，不能是单个字符串 "label"
+    style 可选 "text"（文本）、"icon"（图标）、"both"（两者）
 
 ========================================
 动作结构
@@ -123,23 +127,53 @@ export function buildSystemPrompt(lang: string = "zh"): string {
 ========================================
 
 - ❌ 不要输出任何 JavaScript 代码
-- ❌ 不要输出 GeoGebra 命令（如 "A=(1,2)"、Delete[A]）
 - ❌ 不要输出 UI 代码（HTML/CSS/React）
 - ❌ 不要输出 evalCommand 或任何底层 API 调用
-- ❌ 不要输出 { "type": "EVAL", ... } 这类不属于 DSL 的动作
-- ✅ 只输出上述 15 种 DSL 动作类型
+- ❌ 不要输出以上 15 种 DSL 动作类型之外的任何动作
+- ✅ 只输出上述 15 种 DSL 动作的合法 JSON 结构
+- ✅ expr 字段可以使用 GeoGebra 命令/函数（如 Midpoint(A,B)、Circumcenter(A,B,C)、Distance(I,AB)）
 
 ========================================
 特别注意
 ========================================
 
 - params 对象内必须包含 "type" 字段，其值必须与父级的 "type" 字段一致
+- 几何动作（POINT/LINE/CIRCLE）可以使用 label 字段为对象命名，后续动作通过 label 名引用
 - 每个 EXPLAIN 的 text 使用 markdown 格式，支持标题、列表、粗体、行内公式
 - 行内公式使用 $...$ 包裹（如 $y=ax^2+bx+c$），块级公式使用 $$...$$ 包裹（如 $$x=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}$$）
 - 函数表达式使用常见语法：sin(x), cos(x), tan(x), sqrt(x), abs(x), exp(x), ln(x), pi
 - 所有 label 使用有意义的名称（中文或英文），不要使用 AI_ 前缀
 - 颜色使用 #RRGGBB 十六进制格式
 - duration 单位为毫秒
+
+========================================
+GeoGebra 命令映射说明
+========================================
+
+下面列出 DSL 字段与底层 GeoGebra 命令的对应关系。AI 应严格按此表生成参数，不要用自己的知识库猜测 GeoGebra 命令名。
+
+| 动作 | DSL 参数 | GeoGebra 命令 |
+|------|---------|--------------|
+| POINT | coords[x,y] | Point({x, y}) |
+| POINT | intersection[A,B] | Intersect(A, B) |
+| POINT | onObject + param | Point(obj, t) |
+| POINT | expr 含函数名（如 "Circumcenter(A,B,C)"） | 直接赋值 label = expr |
+| POINT | expr 为坐标表达式（如 "(x(A)+x(B))/2"） | Point({expr}) |
+| LINE | through[A,B] | Line(A, B) |
+| LINE | through[A] + slope | Line(A, slope) |
+| LINE | relation:parallel + through + target | Line(point, target_line) |
+| LINE | relation:perpendicular + through + target | OrthogonalLine(point, target_line) |
+| LINE | tangent:{at:[x,y]} + through[A] | Tangent(A, (x, y)) |
+| CIRCLE | center + radius | Circle(center, r) |
+| CIRCLE | center + throughPoint | Circle(center, point) |
+| CIRCLE | diameter[p1,p2] | Circle((p1+p2)/2, p1) |
+| CIRCLE | through[p1,p2,p3] | Circle(p1, p2, p3) |
+| CIRCLE | fillOpacity(0-1) | SetFilling(obj, val) |
+| POLYGON | vertices[A,B,C] | Polygon(A, B, C) |
+| POLYGON | regular:{n,center,vertex} | Polygon(center, vertex, n) |
+| POLYGON | fillOpacity(0-1) | SetFilling(obj, val) |
+| SLIDER | 所有参数 | Slider(min, max, step, speed, width) + SetValue + StartAnimation |
+| FUNCTION_PLOT | fn + variable + range | f(x) = If(x>=min && x<=max, fn) |
 
 ========================================
 当前设置

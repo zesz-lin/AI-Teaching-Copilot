@@ -74,8 +74,11 @@ export interface SidepanelState {
 
   // ── UI ──
   darkMode: boolean;
-  activePanel: "chat" | "settings";
+  activePanel: "chat" | "settings" | "log";
   inputLength: number;
+
+  // ── Debug / Raw AI response ──
+  aiRawResponses: string[];
 
   // ── Actions ──
   addUserMessage: (content: string) => void;
@@ -84,6 +87,7 @@ export interface SidepanelState {
   setStreamContent: (text: string) => void;
   finishStreaming: (steps?: TeachingStep[]) => void;
   addSystemMessage: (content: string) => void;
+  addAiRawResponse: (content: string) => void;
 
   setSteps: (steps: TeachingStep[]) => void;
   advanceStep: () => void;
@@ -99,7 +103,7 @@ export interface SidepanelState {
   clearActiveQuestion: () => void;
 
   toggleDarkMode: () => void;
-  setActivePanel: (panel: "chat" | "settings") => void;
+  setActivePanel: (panel: "chat" | "settings" | "log") => void;
   setInputLength: (len: number) => void;
 
   clearMessages: () => void;
@@ -130,6 +134,7 @@ export const useStore = create<SidepanelState>((set, get) => ({
   isRunning: false,
   execState: null,
   activeQuestion: null,
+  aiRawResponses: [],
   darkMode: getInitialDarkMode(),
   activePanel: "chat",
   inputLength: 0,
@@ -211,6 +216,10 @@ export const useStore = create<SidepanelState>((set, get) => ({
     set((s) => ({ messages: [...s.messages, msg] }));
   },
 
+  addAiRawResponse: (content: string) => {
+    set((s) => ({ aiRawResponses: [...s.aiRawResponses.slice(-49), content] }));
+  },
+
   // ── Timeline ──
 
   setSteps: (steps: TeachingStep[]) => set({ steps, currentStep: 0 }),
@@ -260,6 +269,7 @@ export const useStore = create<SidepanelState>((set, get) => ({
       isRunning: false,
       execState: null,
       activeQuestion: null,
+      aiRawResponses: [],
     }),
 }));
 

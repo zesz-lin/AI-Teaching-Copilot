@@ -459,6 +459,22 @@ export class ExecutionEngine {
     const action = entry.action;
     const error = result.error ?? new Error("Unknown error");
 
+    // User-initiated skip (from skipAnswer) — mark as skipped and move on
+    if (error.message === "Skipped by user") {
+      entry.state = transitionAction(entry.state, ActionState.SKIPPED);
+      this.logger.logAction(
+        action.id,
+        ActionState.RUNNING,
+        ActionState.SKIPPED,
+        this.state,
+        `Skipped: ${action.type} — ${error.message}`,
+        error.message,
+        Date.now() - result.ctx.startedAt
+      );
+      this.handlers.onActionSkip?.(result.ctx);
+      return;
+    }
+
     entry.state = transitionAction(entry.state, ActionState.FAILED);
 
     this.logger.logAction(
@@ -507,7 +523,7 @@ export class ExecutionEngine {
     }
 
     // Non-optional, no retries left → pause for user decision
-    if (this.config.pauseOnError) {
+    if (this.config.pauseOnError && !isTerminal(this.state)) {
       this.pause(`Action failed: ${action.id} (${action.type}) — ${error.message}`);
     }
   }

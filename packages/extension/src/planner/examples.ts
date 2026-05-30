@@ -193,14 +193,14 @@ const examples: Example[] = [
           version: "1.0.0",
           id: "geo-7",
           type: "LINE",
-          params: { type: "LINE", expr: "AngleBisector(A, B, C)", color: "#f59e0b", style: { dash: "dashed" } },
+          params: { type: "LINE", label: "bisector_B", expr: "AngleBisector(A, B, C)", color: "#f59e0b", style: { dash: "dashed" } },
           meta: { reason: "∠B 的角平分线" },
         },
         {
           version: "1.0.0",
           id: "geo-8",
           type: "LINE",
-          params: { type: "LINE", expr: "AngleBisector(C, A, B)", color: "#f59e0b", style: { dash: "dashed" } },
+          params: { type: "LINE", label: "bisector_A", expr: "AngleBisector(C, A, B)", color: "#f59e0b", style: { dash: "dashed" } },
           meta: { reason: "∠A 的角平分线" },
         },
         {
@@ -231,7 +231,7 @@ const examples: Example[] = [
           version: "1.0.0",
           id: "geo-12",
           type: "CIRCLE",
-          params: { type: "CIRCLE", center: "I", expr: "Distance(I, AB)", fillColor: "#22c55e30", fillOpacity: 0.15, color: "#22c55e", style: { thickness: 2 } },
+          params: { type: "CIRCLE", center: "I", radius: 1.69, fillColor: "#22c55e30", fillOpacity: 0.15, color: "#22c55e", style: { thickness: 2 } },
           meta: { reason: "以 I 为圆心、到 AB 的距离为半径作内切圆" },
         },
         {
@@ -411,6 +411,127 @@ const examples: Example[] = [
         },
       ],
       summary: "正弦函数图像变换三参数教学：A（振幅）、ω（频率）、φ（初相），每个参数配有滑块互动和观察提问，最后总结三者作用。共16步。",
+    }),
+  },
+
+  // ── Example 4: 三角形外接圆（纯几何） ──
+  {
+    user: "构造三角形 ABC 的外接圆",
+
+    assistant: JSON.stringify({
+      actions: [
+        {
+          version: "1.0.0",
+          id: "geo-1",
+          type: "EXPLAIN",
+          params: {
+            type: "EXPLAIN",
+            text: "## 三角形的外接圆\n\n**外接圆**（circumcircle）是经过三角形三个顶点的圆。\n外接圆的圆心是三角形**三边垂直平分线的交点**，称为**外心**（circumcenter）。",
+            format: "markdown",
+          },
+        },
+        {
+          version: "1.0.0",
+          id: "geo-2",
+          type: "POINT",
+          params: { type: "POINT", label: "A", coords: [0, 0], size: 4, color: "#6366f1" },
+        },
+        {
+          version: "1.0.0",
+          id: "geo-3",
+          type: "POINT",
+          params: { type: "POINT", label: "B", coords: [6, 0], size: 4, color: "#6366f1" },
+        },
+        {
+          version: "1.0.0",
+          id: "geo-4",
+          type: "POINT",
+          params: { type: "POINT", label: "C", coords: [2, 5], size: 4, color: "#6366f1" },
+        },
+        {
+          version: "1.0.0",
+          id: "geo-5",
+          type: "POLYGON",
+          params: { type: "POLYGON", vertices: ["A", "B", "C"], fillColor: "#6366f120", showEdges: true },
+          meta: { reason: "构造三角形 ABC" },
+        },
+        {
+          version: "1.0.0",
+          id: "geo-6",
+          type: "EXPLAIN",
+          params: {
+            type: "EXPLAIN",
+            text: "## 步骤一：作垂直平分线\n\n分别作边 AB 和 BC 的垂直平分线。两条垂直平分线的交点即为**外心 O**。",
+            format: "markdown",
+          },
+        },
+        {
+          version: "1.0.0",
+          id: "geo-7",
+          type: "LINE",
+          params: { type: "LINE", label: "perp_AB", expr: "PerpendicularBisector(A, B)", color: "#f59e0b", style: { dash: "dashed" } },
+          meta: { reason: "AB 的垂直平分线" },
+        },
+        {
+          version: "1.0.0",
+          id: "geo-8",
+          type: "LINE",
+          params: { type: "LINE", label: "perp_BC", expr: "PerpendicularBisector(B, C)", color: "#f59e0b", style: { dash: "dashed" } },
+          meta: { reason: "BC 的垂直平分线" },
+        },
+        {
+          version: "1.0.0",
+          id: "geo-9",
+          type: "POINT",
+          params: { type: "POINT", label: "O", intersection: ["perp_AB", "perp_BC"], color: "#ef4444", size: 5 },
+          meta: { reason: "外心 O = 垂直平分线交点" },
+        },
+        {
+          version: "1.0.0",
+          id: "geo-10",
+          type: "HIGHLIGHT",
+          params: { type: "HIGHLIGHT", targets: ["O"], effect: "glow", duration: 2000, color: "#ef4444" },
+          meta: { reason: "高亮外心" },
+        },
+        {
+          version: "1.0.0",
+          id: "geo-11",
+          type: "EXPLAIN",
+          params: {
+            type: "EXPLAIN",
+            text: "## 步骤二：作外接圆\n\n以外心 O 为圆心，O 到任意一个顶点的距离为半径，即可作出外接圆。\n外心到三个顶点的距离相等 — 这是外心的关键性质。",
+            format: "markdown",
+          },
+        },
+        {
+          version: "1.0.0",
+          id: "geo-12",
+          type: "CIRCLE",
+          params: { type: "CIRCLE", center: "O", throughPoint: "A", color: "#22c55e", style: { thickness: 2 } },
+          meta: { reason: "以 O 为圆心、OA 为半径作外接圆" },
+        },
+        {
+          version: "1.0.0",
+          id: "geo-13",
+          type: "SHOW_RELATION",
+          params: { type: "SHOW_RELATION", between: ["O", "A", "B", "C"], relation: "equal", style: "text", duration: 3000 },
+          meta: { reason: "标注 OA=OB=OC 的外心性质" },
+        },
+        {
+          version: "1.0.0",
+          id: "geo-14",
+          type: "ASK_OBSERVATION",
+          params: {
+            type: "ASK_OBSERVATION",
+            question: "外心 O 可能在三角形外部吗？什么情况下在外？",
+            answerType: "text",
+            hint: "观察三角形形状和外心的位置",
+            expectedAnswer: "钝角三角形时，外心在三角形外部",
+            storeKey: "circumcenter_location",
+          },
+        },
+      ],
+      summary: "三角形外接圆教学：构造三角形三顶点，作两条垂直平分线确定外心，以外心到顶点的距离为半径画外接圆，展示等距性质。共14步。",
     }),
   },
 ];

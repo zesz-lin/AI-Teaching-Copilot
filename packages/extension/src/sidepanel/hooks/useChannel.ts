@@ -180,6 +180,9 @@ export function useChannel() {
         if (!isReasoningModel(cfg.model)) {
           body.temperature = cfg.temperature;
         }
+        if (cfg.model.includes("gpt-4") || cfg.model.includes("gpt-3.5")) {
+          body.response_format = { type: "json_object" };
+        }
 
         const resp = await fetch(cfg.apiEndpoint, {
           method: "POST",
@@ -206,14 +209,18 @@ export function useChannel() {
 
         if (signal.aborted) return;
 
-        // 5. Parse response
+        // 5. Save raw AI response for LogPanel debug view
+        store.addAiRawResponse(content);
+
+        // 6. Parse response
         const parsed = parsePlannerResponse(content);
         if (!parsed.success) {
+          console.warn("[Planner] Parse failed. Raw AI response:", content);
           store.addSystemMessage(t("system.plan_failed", { error: parsed.error }));
           return;
         }
 
-        // 6. Send parsed plan to SW for execution
+        // 7. Send parsed plan to SW for execution
         const planResp = await channel.request({
           type: "EXECUTE_PLAN",
           topic: text.slice(0, 80),

@@ -63,9 +63,7 @@ export function parsePlannerResponse(raw: string): PlannerResult {
     if (result.success) {
       actions.push(result.data as Action);
     } else {
-      const issues = result.error.issues.map(
-        (issue) => `${issue.path.join(".")}: ${issue.message}`
-      );
+      const issues = extractZodIssues(result.error.issues);
       errors.push(`actions[${i}]: ${issues.join("; ")}`);
     }
   }
@@ -96,27 +94,54 @@ function extractJson(text: string): string | null {
   // Try markdown code block first
   const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch?.[1]) {
-    return fenceMatch[1].trim();
+    const candidate = fenceMatch[1].trim();
+    try {
+      JSON.parse(candidate);
+      return candidate;
+    } catch {
+      // Not valid JSON — fall through to brace counting
+    }
   }
 
-  // Try to find the outermost JSON object
+  // Find the outermost JSON object by brace counting,
+  // skipping string literals to avoid counting braces inside strings
   const firstBrace = text.indexOf("{");
-  const lastBrace = text.lastIndexOf("}");
-  if (firstBrace === -1 || lastBrace === -1 || firstBrace >= lastBrace) {
-    return null;
-  }
+  if (firstBrace === -1) return null;
 
-  // Count braces to find the matching closing brace
   let depth = 0;
   let end = firstBrace;
+  let inString = false;
+  let escaped = false;
+
   for (let i = firstBrace; i < text.length; i++) {
-    if (text[i] === "{") depth++;
-    if (text[i] === "}") depth--;
+    const ch = text[i];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === "\\") {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+      escaped = false;
+      continue;
+    }
+
+    if (ch === "{") depth++;
+    if (ch === "}") depth--;
     if (depth === 0) {
       end = i + 1;
       break;
     }
   }
+
+  if (depth !== 0) return null;
 
   return text.slice(firstBrace, end);
 }
@@ -128,6 +153,28 @@ function isRawPlannerJson(obj: unknown): obj is RawPlannerJson {
     Array.isArray((obj as Record<string, unknown>)["actions"]) &&
     typeof (obj as Record<string, unknown>)["summary"] === "string"
   );
+}
+
+/**
+ * Recursively extract Zod validation issues, including nested unionErrors.
+ * This ensures "params: Invalid input" is replaced with specific details
+ * like "params.fn: Required" or "params.type: Invalid discriminator value".
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractZodIssues(issues: readonly any[]): string[] {
+  const messages: string[] = [];
+  for (const issue of issues) {
+    if (issue.code === "invalid_union" && Array.isArray(issue.errors)) {
+      // errors is an array of arrays: one entry per union variant
+      const nested = issue.errors as unknown[][];
+      for (const variantIssues of nested) {
+        messages.push(...extractZodIssues(variantIssues as any));
+      }
+    } else {
+      messages.push(`${issue.path.join(".")}: ${issue.message}`);
+    }
+  }
+  return messages;
 }
 
 // ============================================================
