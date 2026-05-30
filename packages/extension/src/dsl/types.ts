@@ -177,10 +177,10 @@ export type TeachingActionType =
 export interface ExplainParams {
   type: "EXPLAIN";
   text: string;
-  format?: "plain" | "markdown" | "latex";
+  format: "plain" | "markdown" | "latex";
   tts?: boolean;
   relatedObjects?: string[];
-  display?: "inline" | "bubble" | "callout";
+  display: "inline" | "bubble" | "callout";
   pointTo?: [number, number] | string;
 }
 
@@ -217,8 +217,8 @@ export interface AnimateStepParams {
   to?: number;
   along?: string;
   duration: number;
-  easing?: "linear" | "ease-in" | "ease-out" | "ease-in-out";
-  play?: boolean;
+  easing: "linear" | "ease-in" | "ease-out" | "ease-in-out";
+  play: boolean;
 }
 
 // --- PAUSE ---
@@ -240,7 +240,7 @@ export interface AskObservationParams {
   options?: string[];
   hint?: string;
   expectedAnswer?: string | number;
-  required?: boolean;
+  required: boolean;
   storeKey?: string;
 }
 
@@ -261,7 +261,7 @@ export interface ShowRelationParams {
     | "bisector";
   at?: string[];
   measure?: boolean;
-  style?: "text" | "icon" | "both";
+  style: "text" | "icon" | "both";
   duration?: number;
 }
 

@@ -9,7 +9,6 @@ import {
   canTransitionAction,
   isTerminal,
   isRunning,
-  isPausable,
 } from "./state-machine";
 
 describe("Engine state machine", () => {
@@ -143,13 +142,5 @@ describe("State helpers", () => {
 
   it("isRunning: PAUSED is not running", () => {
     expect(isRunning(EngineState.PAUSED)).toBe(false);
-  });
-
-  it("isPausable: RUNNING is pausable", () => {
-    expect(isPausable(EngineState.RUNNING)).toBe(true);
-  });
-
-  it("isPausable: IDLE is not pausable", () => {
-    expect(isPausable(EngineState.IDLE)).toBe(false);
   });
 });

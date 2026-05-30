@@ -90,11 +90,38 @@ npm run build          # 生产构建 → packages/extension/dist/
 - 包含 `*.test.tsx` 文件
 - 移除 `__test__.ts` 排除规则，纳入 Vitest 管理
 - 新增 `jsdom` devDependency
+- **8 个引擎测试**：skip 流程、abort、序列化/反序列化、restorePendingAction 等
 
 #### 新增功能
 
 - **"打开 GeoGebra" 按钮**：侧边栏顶部新增快捷跳转按钮，一键打开 `geogebra.org/calculator`
 - **Channel 重连竞态修复**：断连重连时先收集待重发条目再修改 Map，避免迭代中修改
+
+### v0.2.1 — 2026-05-30
+
+#### 致命 Bug 修复
+
+- **修复 `skipAnswer()` 引擎崩溃**：`handleFailure("Skipped by user")` 尝试 `RUNNING→SKIPPED` 转换，但动作状态机未允许此转换，导致抛异常 `Invalid action transition: RUNNING → SKIPPED`。已在 `state-machine.ts` 中添加该转换。
+- **修复 `abort()` 在 READY 状态抛异常**：引擎加载计划但未启动时调用 `abort()`，状态机不允许 `READY→ABORTED`。已在 `state-machine.ts` 中添加该转换。
+
+#### 高优先级修复
+
+- **修复 `GGB_READY` 事件未转发至侧边栏**：`dispatcher.ts` 中 `GGB_READY` handler 仅更新 session store，未调用 `sidepanelPort?.postMessage(msg)`，导致侧边栏从未收到 GeoGebra 就绪事件。现已转发。
+- **修复 `getCurrentActionId()` 对 FAILED 动作返回 null**：引擎暂停后「跳过」按钮调用 `engine.skip()` 时无法定位目标动作。现改为先查 RUNNING，再逆序查 FAILED。
+- **修复 `executeInverse` 只处理 `DELETE_OBJECT`**：`REMOVE_UI`、`RESTORE_STYLE`、`RESET_VIEW` 等回滚操作被静默忽略。现已全类型处理。
+- **修复 SW 重启后 RUNNING 动作永久丢失**：`restoreFromJSON()` 将 cursor 重置为 0，但 RUNNING 状态的条目被 `next()` 跳过。新增 `restorePendingAction()` 方法，将 RUNNING 重置为 PENDING 并回退 cursor。
+- **修复 `actionSchema.type` 使用 `z.string()`**：任何字符串都能通过校验。已改为 `z.enum()` 精确枚举 15 种合法动作类型。
+
+#### 中低优先级修复
+
+- **修复 `engine.skip()` 日志固定写 `FAILED`**：`skip()` 方法可对 PENDING/BLOCKED/FAILED 状态调用，但 log 条目中 `fromActionState` 始终为 `FAILED`。现使用实际来源状态。
+- **修复 style 参数被忽略**：`FUNCTION_PLOT`、`LINE`、`CIRCLE` 的 `style.thickness` 和 `style.dash` 在 `command-builder.ts` 中未被转换为 `SetThickness()` 和 `SetLineStyle()` 命令。现统一处理。
+- **修复直径圆表达式鲁棒性**：`Circle((A+B)/2, A)` 改为 `Circle(Midpoint(A,B), A)`，避免特殊点名导致算术表达式错误。
+- **修复 `ANIMATE_STEP` 逆操作类型**：本应返回 `{ type: "NOOP" }`，但错误生成为 `{ type: "DELETE_OBJECT" }`（无 labels，实际为空操作）。
+- **修复 `resolveTarget` 缺少穷举检查**：通道 `channel.ts` 的 `resolveTarget` 无 `default` 分支，新增动作类型会静默返回 `undefined` 导致崩溃。现添加 `never` 穷举守卫。
+- **移除无意义 try-catch**：`getPort()` 中的 try-catch 永不触发（访问局部变量不可能抛异常）。
+- **移除未使用的 `isPausable`**：`state-machine.ts` 中的 `isPausable` 函数导出但从未被引用。
+- **Zod 默认值 vs TS 可选类型不一致**：`ExplainParams.format`、`AnimateStepParams.easing` 等 6 个字段在 Zod 中有 `.default()` 但 TS 类型标记为可选。现统一为必填以匹配运行时行为。
 
 ## 架构概览
 
@@ -285,6 +312,7 @@ npm run test:watch     # 监听模式
 测试文件位置:
 - `engine/state-machine.test.ts` — 引擎与动作状态转换
 - `engine/queue.test.ts` — 动作队列与依赖解析
+- `engine/engine.test.ts` — 引擎核心（skip/abort/serialize/restore）
 - `planner/parser.test.ts` — AI 响应解析
 - `compressor/classifier.test.ts` — 画布状态分类与压缩
 - `sidepanel/i18n/locales.test.ts` — 翻译键一致性
@@ -340,7 +368,7 @@ interface AppMessage {
 
 ### 引擎持久化
 
-引擎状态通过 `chrome.storage.session` 持久化，在 SW 重启后可恢复。RUNNING 状态降级为 PAUSED，未完成的 `ASK_OBSERVATION` promise 在恢复执行时重新发送给用户。恢复的会话在 `restoreSession()` 中同步注册到内存 Map，确保 `getEngineSession()` 可立即查找。
+引擎状态通过 `chrome.storage.session` 持久化，在 SW 重启后可恢复。RUNNING 状态降级为 PAUSED，且 `restorePendingAction()` 将队列中 `RUNNING` 的动作重置为 `PENDING`、cursor 回退，确保 `ASK_OBSERVATION`/`PAUSE` 在恢复执行时重新发起。恢复的会话在 `restoreSession()` 中同步注册到内存 Map，确保 `getEngineSession()` 可立即查找。
 
 ### 画布上下文压缩
 

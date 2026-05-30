@@ -10,7 +10,7 @@ import { EngineState, ActionState } from "./types";
 
 const ENGINE_TRANSITIONS: Record<EngineState, Set<EngineState>> = {
   [EngineState.IDLE]:      new Set([EngineState.READY]),
-  [EngineState.READY]:     new Set([EngineState.RUNNING]),
+  [EngineState.READY]:     new Set([EngineState.RUNNING, EngineState.ABORTED]),
   [EngineState.RUNNING]:   new Set([EngineState.PAUSED, EngineState.COMPLETED, EngineState.ABORTED, EngineState.FAILED]),
   [EngineState.PAUSED]:    new Set([EngineState.RUNNING, EngineState.ABORTED]),
   [EngineState.COMPLETED]: new Set([]),
@@ -36,7 +36,7 @@ export function transitionEngine(current: EngineState, next: EngineState): Engin
 const ACTION_TRANSITIONS: Record<ActionState, Set<ActionState>> = {
   [ActionState.PENDING]:     new Set([ActionState.BLOCKED, ActionState.RUNNING, ActionState.SKIPPED]),
   [ActionState.BLOCKED]:     new Set([ActionState.PENDING, ActionState.SKIPPED]),
-  [ActionState.RUNNING]:     new Set([ActionState.COMPLETED, ActionState.FAILED]),
+  [ActionState.RUNNING]:     new Set([ActionState.COMPLETED, ActionState.FAILED, ActionState.SKIPPED]),
   [ActionState.COMPLETED]:   new Set([ActionState.ROLLED_BACK]),
   [ActionState.FAILED]:      new Set([ActionState.PENDING, ActionState.SKIPPED, ActionState.RUNNING]),
   [ActionState.SKIPPED]:     new Set([]),
@@ -63,9 +63,5 @@ export function isTerminal(state: EngineState): boolean {
 }
 
 export function isRunning(state: EngineState): boolean {
-  return state === EngineState.RUNNING;
-}
-
-export function isPausable(state: EngineState): boolean {
   return state === EngineState.RUNNING;
 }

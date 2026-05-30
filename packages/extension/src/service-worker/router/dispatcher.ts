@@ -382,6 +382,7 @@ async function handleInternal(
           lastActive: new Date().toISOString(),
         });
       }
+      sidepanelPort?.postMessage(msg);
       break;
     }
 

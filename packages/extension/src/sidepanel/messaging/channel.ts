@@ -131,11 +131,7 @@ export function createChannel(): Channel {
   }
 
   function getPort(): chrome.runtime.Port {
-    try {
-      return port;
-    } catch {
-      return reconnect();
-    }
+    return port;
   }
 
   function resolveTarget(payload: CommandPayload): "sw" | "bridge" {
@@ -152,6 +148,10 @@ export function createChannel(): Channel {
       case "GET_STATE":
       case "CLEAR_ALL":
         return "bridge";
+      default: {
+        const _exhaustive: never = payload;
+        return "sw";
+      }
     }
   }
 

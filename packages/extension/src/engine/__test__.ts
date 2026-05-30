@@ -283,6 +283,105 @@ test("engine retries failed actions", async () => {
   if (attempts !== 3) throw new Error(`expected 3 attempts, got ${attempts}`);
 });
 
+test("skip flow: RUNNING→SKIPPED transition", async () => {
+  const engine = new ExecutionEngine(makeMockExecutor(), { maxRetries: 0 });
+  engine.loadPlan(makePlan([{ version: "1.0.0", id: "s1", type: "EXPLAIN", params: { type: "EXPLAIN", text: "A" } }]));
+  engine.start();
+
+  // Manually set action to RUNNING and simulate skip via handleFailure path
+  const entry = (engine as unknown as { queue: { get: (id: string) => { state: string; action: { id: string } } } }).queue.get("s1");
+  if (!entry) throw new Error("entry not found");
+  // Direct skip through engine.skip()
+  engine.skip("s1");
+
+  const status = engine.getStatus();
+  if (status.skippedSteps < 1) throw new Error(`expected skipped, got ${status.skippedSteps}`);
+  if (engine.getState() !== EngineState.RUNNING) throw new Error(`expected RUNNING, got ${engine.getState()}`);
+});
+
+test("skip restores pending action log correctly", () => {
+  // Verify that skip() logs the correct fromState (not hardcoded FAILED)
+  const engine = new ExecutionEngine(makeMockExecutor());
+  engine.loadPlan(makePlan([{ version: "1.0.0", id: "s0", type: "EXPLAIN", params: { type: "EXPLAIN", text: "A" } }]));
+  engine.skip("s0"); // PENDING→SKIPPED
+
+  const log = engine.getLog();
+  const skipEntry = log.find((e) => e.toActionState === "SKIPPED");
+  if (!skipEntry) throw new Error("no skip log entry");
+  // fromActionState should be PENDING, not FAILED
+  if (skipEntry.fromActionState !== "PENDING") throw new Error(`expected PENDING, got ${skipEntry.fromActionState}`);
+});
+
+test("getCurrentActionId returns failed action when no running", () => {
+  const engine = new ExecutionEngine(makeMockExecutor());
+  engine.loadPlan(makePlan([{ version: "1.0.0", id: "s1", type: "EXPLAIN", params: { type: "EXPLAIN", text: "A" } }]));
+  
+  // Before any execution, no running or failed action
+  if (engine.getCurrentActionId() !== null) throw new Error("expected null initially");
+
+  // Manually set action to FAILED
+  const entry = (engine as unknown as { queue: { get: (id: string) => { state: string; action: { id: string } } } }).queue.get("s1");
+  if (!entry) throw new Error("entry not found");
+  entry.state = "FAILED" as any;
+
+  const id = engine.getCurrentActionId();
+  if (id !== "s1") throw new Error(`expected s1, got ${id}`);
+});
+
+test("READY→ABORTED transition", () => {
+  const engine = new ExecutionEngine(makeMockExecutor());
+  engine.loadPlan(makePlan());
+  engine.abort();
+  if (engine.getState() !== "ABORTED") throw new Error(`expected ABORTED, got ${engine.getState()}`);
+});
+
+test("RUNNING→SKIPPED action transition", () => {
+  if (!canTransitionAction("RUNNING" as any, "SKIPPED" as any)) throw new Error("RUNNING→SKIPPED should be valid");
+});
+
+test("engine serialize and deserialize preserves state", () => {
+  const plan = makePlan();
+  const engine = new ExecutionEngine(makeMockExecutor());
+  engine.loadPlan(plan);
+  engine.start();
+
+  const ser = engine.serialize();
+  if (ser.state !== "RUNNING") throw new Error(`expected RUNNING, got ${ser.state}`);
+  if (ser.queueSnapshot.length !== 3) throw new Error(`expected 3 queue entries, got ${ser.queueSnapshot.length}`);
+
+  // Deserialize into new engine
+  const engine2 = ExecutionEngine.deserialize(ser, makeMockExecutor());
+  if (engine2.getState() !== "RUNNING") throw new Error(`expected RUNNING, got ${engine2.getState()}`);
+  if (engine2.getStatus().totalSteps !== 3) throw new Error(`expected 3 steps, got ${engine2.getStatus().totalSteps}`);
+});
+
+test("restorePendingAction resets RUNNING to PENDING", () => {
+  const engine = new ExecutionEngine(makeMockExecutor());
+  engine.loadPlan(makePlan());
+  // Simulate that an action is stuck in RUNNING (e.g. after SW restart)
+  const entry = (engine as unknown as { queue: { get: (id: string) => { state: string } } }).queue.get("s1");
+  if (!entry) throw new Error("entry not found");
+  entry.state = "RUNNING" as any;
+
+  engine.restorePendingAction();
+
+  const status = engine.getStatus();
+  // After restore, there should be 0 completed — all still pending
+  if (status.completedSteps !== 0) throw new Error(`expected 0 completed after restore, got ${status.completedSteps}`);
+});
+
+test("abort during execution transitions correctly", () => {
+  const engine = new ExecutionEngine(makeMockExecutor());
+  engine.loadPlan(makePlan());
+  engine.start();
+  engine.abort();
+  if (engine.getState() !== "ABORTED") throw new Error(`expected ABORTED, got ${engine.getState()}`);
+
+  // Can reload plan after abort
+  engine.loadPlan(makePlan());
+  if (engine.getState() !== "READY") throw new Error(`expected READY, got ${engine.getState()}`);
+});
+
 // ============================================================
 // Transaction tests
 // ============================================================

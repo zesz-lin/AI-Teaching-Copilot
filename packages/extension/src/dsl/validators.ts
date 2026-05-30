@@ -248,7 +248,7 @@ const paramsSchema = z.union([geometryParamsSchema, teachingParamsSchema]);
 export const actionSchema = z.object({
   version: z.literal("1.0.0"),
   id: z.string().min(1),
-  type: z.string(),
+  type: z.enum(["FUNCTION_PLOT", "POINT", "LINE", "CIRCLE", "POLYGON", "SLIDER", "DELETE", "CLEAR", "EXPLAIN", "HIGHLIGHT", "FOCUS_VIEW", "ANIMATE_STEP", "PAUSE", "ASK_OBSERVATION", "SHOW_RELATION"]),
   params: paramsSchema,
   meta: actionMetaSchema.optional(),
 });

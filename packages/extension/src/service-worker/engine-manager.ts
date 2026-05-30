@@ -260,21 +260,44 @@ class SwActionExecutor implements ActionExecutor {
   }
 
   async restoreSnapshot(_snapshot: ActionSnapshot): Promise<void> {
-    // For P0, restore = clear and let rebuild happen
+    console.warn("[SwActionExecutor] Snapshot restoration not supported, skipping");
   }
 
   async executeInverse(inverse: InverseAction): Promise<void> {
-    if (inverse.type === "DELETE_OBJECT" && inverse.labels?.length) {
-      try {
-        const commands: GgbCommand[] = inverse.labels.map((label) => ({
-          expr: `Delete(${label})`,
-        }));
-        const requestMsg = buildRequest("sw", "bridge", {
-          type: "EXEC_GGB",
-          commands,
-        });
-        await chrome.tabs.sendMessage(this.tabId, requestMsg);
-      } catch { /* best-effort */ }
+    switch (inverse.type) {
+      case "DELETE_OBJECT":
+        if (inverse.labels?.length) {
+          try {
+            const commands: GgbCommand[] = inverse.labels.map((label) => ({
+              expr: `Delete(${label})`,
+            }));
+            const requestMsg = buildRequest("sw", "bridge", {
+              type: "EXEC_GGB",
+              commands,
+            });
+            await chrome.tabs.sendMessage(this.tabId, requestMsg);
+          } catch { /* best-effort */ }
+        }
+        break;
+
+      case "REMOVE_UI":
+        this.postEvent({ type: "REMOVE_UI", uiIds: inverse.uiIds });
+        break;
+
+      case "RESTORE_STYLE":
+        this.postEvent({ type: "RESTORE_STYLE", targets: (inverse.styleRestore as { targets: string[] })?.targets ?? [] });
+        break;
+
+      case "RESET_VIEW":
+        this.postEvent({ type: "RESET_VIEW" });
+        break;
+
+      case "RESTORE_SNAPSHOT":
+        console.warn("[SwActionExecutor] Snapshot restoration not supported, skipping");
+        break;
+
+      case "NOOP":
+        break;
     }
   }
 
@@ -651,7 +674,7 @@ export function removeSession(tabId: number): void {
  *
  * On restore, RUNNING state is downgraded to PAUSED (safe state since
  * the SW was killed). Pending ASK_OBSERVATION/PAUSE promises are lost
- * and will be re-presented when the engine resumes execution.
+ * but will be re-created when the engine resumes execution via tick().
  */
 export async function restoreSession(
   tabId: number,
@@ -669,6 +692,7 @@ export async function restoreSession(
   }
 
   const session = EngineSession.restore(tabId, port, snap);
+  session.engine.restorePendingAction();
   sessions.set(tabId, session);
   return session;
 }

@@ -230,10 +230,11 @@ export class ExecutionEngine {
     const entry = this.queue.get(actionId);
     if (!entry) return;
 
+    const fromState = entry.state;
     entry.state = transitionAction(entry.state, ActionState.SKIPPED);
     this.logger.logAction(
       actionId,
-      ActionState.FAILED,
+      fromState,
       ActionState.SKIPPED,
       this.state,
       "Action skipped by user"
@@ -313,17 +314,33 @@ export class ExecutionEngine {
     return this.state;
   }
 
-  /** ID of the currently running action, if any */
+  /** ID of the currently running or last failed action, if any */
   getCurrentActionId(): string | null {
     const all = this.queue.all();
     const running = all.find((e) => e.state === ActionState.RUNNING);
-    return running?.action.id ?? null;
+    if (running) return running.action.id;
+    const failed = [...all].reverse().find((e) => e.state === ActionState.FAILED);
+    return failed?.action.id ?? null;
   }
 
   /** ID of the last completed action, if any — used for single-step undo */
   getLastCompletedActionId(): string | null {
     const completed = this.rollbackMgr.getCompleted();
     return completed.length > 0 ? completed[completed.length - 1].action.id : null;
+  }
+
+  /**
+   * After deserialization (SW restart), reset any RUNNING actions back to PENDING
+   * so the queue cursor can re-discover them on resume. Without this, actions that
+   * were mid-execution (e.g. ASK_OBSERVATION, PAUSE) would be skipped silently.
+   */
+  restorePendingAction(): void {
+    for (const entry of this.queue.all()) {
+      if (entry.state === ActionState.RUNNING) {
+        entry.state = ActionState.PENDING;
+        this.queue.resetCursorTo(entry.action.id);
+      }
+    }
   }
 
   // ==========================================================

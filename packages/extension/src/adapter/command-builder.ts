@@ -26,6 +26,20 @@ function hexToRgbCommands(label: string, hex: string): GgbCommand[] {
   return [{ expr: `SetColor(${label}, ${r.toFixed(3)}, ${g.toFixed(3)}, ${b.toFixed(3)})` }];
 }
 
+const DASH_MAP: Record<string, number> = { solid: 0, dashed: 10, dotted: 20, dashdot: 30 };
+
+function styleCommands(label: string, style?: { thickness?: number; dash?: string }): GgbCommand[] {
+  const cmds: GgbCommand[] = [];
+  if (style?.thickness !== undefined) {
+    cmds.push({ expr: `SetThickness(${label}, ${style.thickness})` });
+  }
+  if (style?.dash !== undefined) {
+    const val = DASH_MAP[style.dash] ?? 0;
+    cmds.push({ expr: `SetLineStyle(${label}, ${val})` });
+  }
+  return cmds;
+}
+
 // ============================================================
 // Builder interface
 // ============================================================
@@ -68,6 +82,9 @@ export function buildFunctionPlot(
 
   if (params.color) {
     commands.push(...hexToRgbCommands(label, params.color!));
+  }
+  if (params.style) {
+    commands.push(...styleCommands(label, params.style));
   }
 
   return { commands, labels: [label] };
@@ -158,6 +175,9 @@ export function buildLine(
   if (params.color) {
     commands.push(...hexToRgbCommands(label, params.color!));
   }
+  if (params.style) {
+    commands.push(...styleCommands(label, params.style));
+  }
 
   return { commands, labels: [label] };
 }
@@ -179,7 +199,7 @@ export function buildCircle(
     expr = `${label} = Circle(${params.center}, ${params.throughPoint})`;
   } else if (params.diameter) {
     const [a, b] = params.diameter;
-    expr = `${label} = Circle((${a}+${b})/2, ${a})`;
+    expr = `${label} = Circle(Midpoint(${a}, ${b}), ${a})`;
   } else if (params.through && params.through.length === 3) {
     const [a, b, c] = params.through;
     expr = `${label} = Circle(${a}, ${b}, ${c})`;
@@ -193,6 +213,9 @@ export function buildCircle(
 
   if (params.color) {
     commands.push(...hexToRgbCommands(label, params.color!));
+  }
+  if (params.style) {
+    commands.push(...styleCommands(label, params.style));
   }
   if (params.fillOpacity !== undefined) {
     commands.push({ expr: `SetFilling(${label}, ${params.fillOpacity})` });

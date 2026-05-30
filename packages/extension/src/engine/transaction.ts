@@ -151,10 +151,7 @@ export class TransactionManager {
         return { type: "RESET_VIEW" };
 
       case "ANIMATE_STEP":
-        return {
-          type: "DELETE_OBJECT",
-          // Animate step doesn't create objects — inverse is NOOP
-        };
+        return { type: "NOOP" };
 
       case "PAUSE":
         return { type: "NOOP" };
