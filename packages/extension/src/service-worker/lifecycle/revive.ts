@@ -2,8 +2,9 @@
 // SW lifecycle — restore state when woken up
 // ============================================================
 
-import { getAllSessions } from "../session/store";
+import { getAllSessions, removeSession } from "../session/store";
 import { restoreSession } from "../engine-manager";
+import { setActiveTab } from "../router/dispatcher";
 
 const ENGINE_SESSION_PREFIX = "engine_session_";
 
@@ -12,6 +13,9 @@ const ENGINE_SESSION_PREFIX = "engine_session_";
  * chrome.storage.session. Memory-only references (Port objects,
  * pending callbacks) are naturally lost and will be re-established
  * when the sidepanel reconnects.
+ *
+ * Also restores the activeTabId to the dispatcher so that
+ * resolveActiveTab() returns the correct tab after SW restart.
  */
 export async function reviveSessions(): Promise<void> {
   // 1. Restore tab sessions (GGB readiness state)
@@ -29,7 +33,6 @@ export async function reviveSessions(): Promise<void> {
 
   for (const session of sessions) {
     if (!existingIds.has(session.tabId)) {
-      const { removeSession } = await import("../session/store");
       await removeSession(session.tabId);
       console.log(`[SW] Pruned stale session for tab ${session.tabId}`);
     }
@@ -45,6 +48,8 @@ export async function reviveSessions(): Promise<void> {
 
   console.log(`[SW] Found ${engineKeys.length} persisted engine session(s)`);
 
+  let firstRestoredTabId: number | null = null;
+
   for (const key of engineKeys) {
     const tabId = parseInt(key.slice(ENGINE_SESSION_PREFIX.length), 10);
 
@@ -58,10 +63,19 @@ export async function reviveSessions(): Promise<void> {
     // Port is null initially — will be set when sidepanel reconnects
     const session = await restoreSession(tabId, null);
     if (session) {
+      if (firstRestoredTabId === null) {
+        firstRestoredTabId = tabId;
+      }
       console.log(
         `[SW] Restored engine session tab=${tabId} ` +
         `${session.engine.getStatus().completedSteps}/${session.engine.getStatus().totalSteps} steps done`
       );
     }
+  }
+
+  // 3. Restore activeTabId to dispatcher so resolveActiveTab() works
+  if (firstRestoredTabId !== null) {
+    setActiveTab(firstRestoredTabId);
+    console.log(`[SW] Restored activeTabId=${firstRestoredTabId}`);
   }
 }

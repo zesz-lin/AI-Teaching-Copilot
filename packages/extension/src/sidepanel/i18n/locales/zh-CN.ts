@@ -6,6 +6,7 @@ const zhCN: Record<string, string> = {
   "app.tab.settings": "设置",
   "app.darkmode.tooltip.light": "切换到亮色模式",
   "app.darkmode.tooltip.dark": "切换到暗色模式",
+  "app.open_geogebra": "打开 GeoGebra",
 
   "control.stop": "停止",
   "control.resume": "继续",
@@ -94,6 +95,15 @@ const zhCN: Record<string, string> = {
   "system.no_rerun_query": "⚠️ 没有可重新执行的查询",
   "system.stopped": "⏹ 已停止",
   "system.api_error": "❌ AI API 错误 ({status}): {detail}",
+
+  "sw.no_tab": "无法连接到 GeoGebra 标签页 (tab {tabId})。请确认你正在 *.geogebra.org 页面上，且页面已完全加载。",
+  "sw.command_failed": "GeoGebra命令执行失败: {error}",
+  "sw.no_api_key": "⚠️ 请先设置 AI API Key。\n\n在扩展设置中配置 OpenAI 兼容的 API 端点、Key 和模型。",
+  "sw.config_load_failed": "⚠️ 无法加载 AI 配置",
+  "sw.plan_failed": "❌ AI 规划失败:\n\n{error}",
+  "sw.no_active_tab": "⚠️ 未找到活动的 GeoGebra 标签页，无法执行教学计划。",
+  "sw.ai_error": "❌ AI 调用异常:\n\n{error}",
+  "sw.thinking": "指令已接收，思考中",
 };
 
 export default zhCN;

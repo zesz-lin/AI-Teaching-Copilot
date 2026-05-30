@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { ChatMessage } from "../store";
 import { useTranslation } from "../i18n";
 import { renderMarkdown } from "../markdown";
@@ -6,7 +7,7 @@ interface Props {
   message: ChatMessage;
 }
 
-export function MessageBubble({ message }: Props) {
+export const MessageBubble = memo(function MessageBubble({ message }: Props) {
   const { t, locale } = useTranslation();
   const isUser = message.role === "user";
   const isSystem = message.role === "system";
@@ -46,4 +47,4 @@ export function MessageBubble({ message }: Props) {
       </div>
     </div>
   );
-}
+});

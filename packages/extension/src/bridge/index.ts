@@ -200,5 +200,8 @@ function handleCommand(msg: AppMessage): void {
 // ============================================================
 
 function postToCs(msg: AppMessage): void {
-  window.postMessage({ ...msg, __token: BRIDGE_TOKEN }, "*");
+  // Use targetOrigin from page location for better security when possible.
+  // Falls back to "*" for compatibility with MV3 extension pages.
+  const origin = window.location?.origin || "*";
+  window.postMessage({ ...msg, __token: BRIDGE_TOKEN }, origin);
 }

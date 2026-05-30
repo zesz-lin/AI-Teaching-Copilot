@@ -83,14 +83,23 @@ export default function App() {
             </span>
           )}
         </div>
-        <button
-          onClick={toggleDarkMode}
-          className="p-1 rounded text-panel-muted hover:bg-panel-surface transition-colors active:scale-95"
-          title={darkMode ? t("app.darkmode.tooltip.light") : t("app.darkmode.tooltip.dark")}
-          aria-label={darkMode ? t("app.darkmode.tooltip.light") : t("app.darkmode.tooltip.dark")}
-        >
-          {darkMode ? <SunIcon /> : <MoonIcon />}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => chrome.tabs.create({ url: "https://www.geogebra.org/calculator" })}
+            className="px-2 py-1 rounded text-[10px] font-medium bg-accent-surface text-accent hover:bg-accent hover:text-white transition-colors active:scale-95"
+            title={t("app.open_geogebra")}
+          >
+            {t("app.open_geogebra")}
+          </button>
+          <button
+            onClick={toggleDarkMode}
+            className="p-1 rounded text-panel-muted hover:bg-panel-surface transition-colors active:scale-95"
+            title={darkMode ? t("app.darkmode.tooltip.light") : t("app.darkmode.tooltip.dark")}
+            aria-label={darkMode ? t("app.darkmode.tooltip.light") : t("app.darkmode.tooltip.dark")}
+          >
+            {darkMode ? <SunIcon /> : <MoonIcon />}
+          </button>
+        </div>
       </header>
 
       {/* Control bar */}

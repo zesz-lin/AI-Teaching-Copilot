@@ -120,7 +120,7 @@ class SwActionExecutor implements ActionExecutor {
       response = await chrome.tabs.sendMessage(this.tabId, requestMsg);
     } catch {
       throw new Error(
-        `无法连接到 GeoGebra 标签页 (tab ${this.tabId})。请确认你正在 *.geogebra.org 页面上，且页面已完全加载。`
+        `Cannot connect to GeoGebra tab (tab ${this.tabId}). Please ensure you are on a *.geogebra.org page and it is fully loaded.`
       );
     }
     const payload = response.payload;
@@ -132,7 +132,7 @@ class SwActionExecutor implements ActionExecutor {
           .filter((r: { status: string; error?: string }) => r.status === "error")
           .map((r: { error?: string }) => r.error ?? "unknown")
           .join("; ");
-        throw new Error(`GeoGebra命令执行失败: ${errMsg}`);
+        throw new Error(`GeoGebra command failed: ${errMsg}`);
       }
 
       return {
@@ -196,10 +196,26 @@ class SwActionExecutor implements ActionExecutor {
     };
 
     if (params.until === "duration" && params.duration) {
+      const durationMs = params.duration;
+      // For long durations (>25s), use chrome.alarms which survives SW restarts
+      if (durationMs > 25_000) {
+        const alarmName = `pause_${action.id}`;
+        return new Promise((resolve) => {
+          const onAlarm = (alarm: chrome.alarms.Alarm) => {
+            if (alarm.name === alarmName) {
+              chrome.alarms.onAlarm.removeListener(onAlarm);
+              resolve({ createdLabels: [], deletedLabels: [] });
+            }
+          };
+          chrome.alarms.onAlarm.addListener(onAlarm);
+          chrome.alarms.create(alarmName, { delayInMinutes: durationMs / 60_000 });
+        });
+      }
+      // Short durations: setTimeout (SW likely stays alive)
       return new Promise((resolve) => {
         setTimeout(() => {
           resolve({ createdLabels: [], deletedLabels: [] });
-        }, params.duration);
+        }, durationMs);
       });
     }
 
@@ -632,7 +648,9 @@ export async function restoreSession(
     snap.serializedAt = Date.now();
   }
 
-  return EngineSession.restore(tabId, port, snap);
+  const session = EngineSession.restore(tabId, port, snap);
+  sessions.set(tabId, session);
+  return session;
 }
 
 /**

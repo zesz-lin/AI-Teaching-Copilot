@@ -1,7 +1,8 @@
+import { memo } from "react";
 import { useStore } from "../store";
 import { useTranslation } from "../i18n";
 
-export function Timeline() {
+export const Timeline = memo(function Timeline() {
   const steps = useStore((s) => s.steps);
   const currentStep = useStore((s) => s.currentStep);
   const advanceStep = useStore((s) => s.advanceStep);
@@ -76,4 +77,4 @@ export function Timeline() {
       </div>
     </div>
   );
-}
+});

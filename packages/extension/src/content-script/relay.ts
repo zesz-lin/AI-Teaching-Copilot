@@ -60,10 +60,8 @@ export function handleBridgeMessage(msg: AppMessage): void {
       pendingRequests.delete(msg.id);
 
       // Resolve the original chrome.tabs.sendMessage promise
+      // (the dispatcher will forward to sidepanel if needed)
       pending.resolve(msg);
-
-      // Also route through SW for forwarding to sidepanel if needed
-      chrome.runtime.sendMessage(msg).catch(() => { /* fire-and-forget */ });
       break;
     }
 

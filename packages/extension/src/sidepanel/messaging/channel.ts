@@ -78,24 +78,36 @@ export function createChannel(): Channel {
           const newPort = chrome.runtime.connect({ name: SIDEPANEL_PORT });
           port = newPort;
           wirePort(newPort);
-          // Re-send all pending requests through the new port
-          for (const [, entry] of pending) {
+
+          // Collect entries to resend first to avoid modifying map during iteration
+          const toResend: Array<[string, PendingEntry]> = [];
+          const toReject: Array<[string, PendingEntry]> = [];
+
+          for (const [id, entry] of pending) {
             entry.retries++;
             if (entry.retries > MAX_RETRIES) {
-              clearTimeout(entry.timer);
-              entry.reject(new Error("Service Worker disconnected"));
+              toReject.push([id, entry]);
             } else {
-              try {
-                newPort.postMessage(entry.msg);
-              } catch {
-                clearTimeout(entry.timer);
-                entry.reject(new Error("Service Worker disconnected"));
-              }
+              toResend.push([id, entry]);
             }
           }
-          // Clean up rejected entries
-          for (const [id, entry] of pending) {
-            if (entry.retries > MAX_RETRIES) pending.delete(id);
+
+          // Reject exceeded entries
+          for (const [id, entry] of toReject) {
+            clearTimeout(entry.timer);
+            entry.reject(new Error("Service Worker disconnected"));
+            pending.delete(id);
+          }
+
+          // Resend through new port
+          for (const [, entry] of toResend) {
+            try {
+              newPort.postMessage(entry.msg);
+            } catch {
+              clearTimeout(entry.timer);
+              entry.reject(new Error("Service Worker disconnected"));
+              pending.delete(entry.msg.id);
+            }
           }
         } catch {
           for (const [, entry] of pending) {

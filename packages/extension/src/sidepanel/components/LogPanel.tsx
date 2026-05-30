@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { memo, useRef, useEffect } from "react";
 import { useStore } from "../store";
 import { useTranslation } from "../i18n";
 
@@ -9,7 +9,7 @@ const stateColor: Record<string, string> = {
   RUNNING: "text-accent",
 };
 
-export function LogPanel() {
+export const LogPanel = memo(function LogPanel() {
   const entries = useStore((s) => s.logEntries);
   const clearLogs = useStore((s) => s.clearLogs);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -84,4 +84,4 @@ export function LogPanel() {
       </div>
     </div>
   );
-}
+});

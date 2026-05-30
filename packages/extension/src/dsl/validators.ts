@@ -29,7 +29,10 @@ const functionPlotSchema = z.object({
   type: z.literal("FUNCTION_PLOT"),
   fn: z.string().min(1),
   variable: z.string().min(1),
-  range: z.tuple([z.number(), z.number()]),
+  range: z.tuple([z.number(), z.number()]).refine(
+    ([min, max]) => min < max,
+    { message: "range min must be less than max" }
+  ),
   label: z.string().optional(),
   style: lineStyleSchema.optional(),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
@@ -106,9 +109,15 @@ const sliderSchema = z.object({
   animate: z.boolean().optional(),
   speed: z.number().positive().optional(),
   direction: z.enum(["inc", "dec", "oscillate"]).optional(),
-  width: z.number().positive().optional(),
+  width: z.number().int().min(50).max(500).optional(),
   position: z.tuple([z.number(), z.number()]).optional(),
-});
+}).refine(
+  (s) => s.min < s.max,
+  { message: "SLIDER min must be less than max" }
+).refine(
+  (s) => s.initial === undefined || (s.initial >= s.min && s.initial <= s.max),
+  { message: "SLIDER initial must be within [min, max]" }
+);
 
 const deleteSchema = z.object({
   type: z.literal("DELETE"),
@@ -152,8 +161,14 @@ const focusViewSchema = z.object({
   type: z.literal("FOCUS_VIEW"),
   target: z.enum(["objects", "region", "reset", "zoom_in", "zoom_out"]),
   objects: z.array(z.string()).optional(),
-  xRange: z.tuple([z.number(), z.number()]).optional(),
-  yRange: z.tuple([z.number(), z.number()]).optional(),
+  xRange: z.tuple([z.number(), z.number()]).refine(
+    ([min, max]) => min < max,
+    { message: "xRange min must be less than max" }
+  ).optional(),
+  yRange: z.tuple([z.number(), z.number()]).refine(
+    ([min, max]) => min < max,
+    { message: "yRange min must be less than max" }
+  ).optional(),
   padding: z.number().min(0).max(1).optional(),
   animation: z.number().int().min(0).optional(),
 });
@@ -277,7 +292,11 @@ export function validateAction(raw: unknown): ActionValidated {
 }
 
 export function validateActionSafe(raw: unknown): { success: true; data: ActionValidated } | { success: false; error: z.ZodError } {
-  return actionSchema.safeParse(raw) as { success: true; data: ActionValidated } | { success: false; error: z.ZodError };
+  const result = actionSchema.safeParse(raw);
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+  return { success: false, error: result.error };
 }
 
 export function validateLessonPlan(raw: unknown): LessonPlanValidated {
@@ -285,5 +304,9 @@ export function validateLessonPlan(raw: unknown): LessonPlanValidated {
 }
 
 export function validateLessonPlanSafe(raw: unknown): { success: true; data: LessonPlanValidated } | { success: false; error: z.ZodError } {
-  return lessonPlanSchema.safeParse(raw) as { success: true; data: LessonPlanValidated } | { success: false; error: z.ZodError };
+  const result = lessonPlanSchema.safeParse(raw);
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+  return { success: false, error: result.error };
 }

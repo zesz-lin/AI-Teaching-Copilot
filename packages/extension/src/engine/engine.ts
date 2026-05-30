@@ -148,8 +148,9 @@ export class ExecutionEngine {
   abort(): void {
     if (isTerminal(this.state)) return;
 
+    const fromState = this.state;
     this.transitionTo(EngineState.ABORTED);
-    this.logger.logEngine(EngineState.RUNNING, EngineState.ABORTED, "Aborted");
+    this.logger.logEngine(fromState, EngineState.ABORTED, "Aborted");
     this.handlers.onAbort?.();
   }
 
@@ -199,7 +200,9 @@ export class ExecutionEngine {
   async run(): Promise<void> {
     while (this.state === EngineState.RUNNING) {
       const result = await this.tick();
-      if (!result) break; // done or paused
+      if (!result) break;
+      // Yield to event loop between steps to prevent SW timeout
+      await new Promise((resolve) => setTimeout(resolve, 0));
     }
   }
 
@@ -210,8 +213,8 @@ export class ExecutionEngine {
     const entry = this.queue.get(actionId);
     if (!entry || entry.state !== ActionState.FAILED) return null;
 
-    entry.state = ActionState.PENDING;
-    this.queue.resetCursor();
+    entry.state = transitionAction(entry.state, ActionState.PENDING);
+    this.queue.resetCursorTo(actionId);
 
     if (this.state === EngineState.PAUSED) {
       this.start(); // resume
@@ -227,7 +230,7 @@ export class ExecutionEngine {
     const entry = this.queue.get(actionId);
     if (!entry) return;
 
-    entry.state = ActionState.SKIPPED;
+    entry.state = transitionAction(entry.state, ActionState.SKIPPED);
     this.logger.logAction(
       actionId,
       ActionState.FAILED,
@@ -266,14 +269,29 @@ export class ExecutionEngine {
   /** Current engine status (read-only snapshot) */
   getStatus(): EngineStatus {
     const all = this.queue.all();
+    let currentStep = -1;
+    let completedSteps = 0;
+    let failedSteps = 0;
+    let skippedSteps = 0;
+
+    for (let i = 0; i < all.length; i++) {
+      const state = all[i].state;
+      if (state === ActionState.RUNNING && currentStep === -1) {
+        currentStep = i;
+      }
+      if (state === ActionState.COMPLETED) completedSteps++;
+      else if (state === ActionState.FAILED) failedSteps++;
+      else if (state === ActionState.SKIPPED) skippedSteps++;
+    }
+
     return {
       engineState: this.state,
       planId: this.plan?.planId ?? null,
       totalSteps: all.length,
-      currentStep: all.findIndex((e) => e.state === ActionState.RUNNING),
-      completedSteps: all.filter((e) => e.state === ActionState.COMPLETED).length,
-      failedSteps: all.filter((e) => e.state === ActionState.FAILED).length,
-      skippedSteps: all.filter((e) => e.state === ActionState.SKIPPED).length,
+      currentStep,
+      completedSteps,
+      failedSteps,
+      skippedSteps,
       isPaused: this.state === EngineState.PAUSED,
       pauseReason: null,
       elapsedMs: this.startedAt ? Date.now() - this.startedAt : 0,
@@ -398,7 +416,7 @@ export class ExecutionEngine {
       `Executing ${action.type} (retry ${retryCount})`
     );
 
-    entry.state = ActionState.RUNNING;
+    entry.state = transitionAction(entry.state, ActionState.RUNNING);
     this.handlers.onActionStart?.({
       action,
       stepIndex: entry.stepIndex,
@@ -441,7 +459,7 @@ export class ExecutionEngine {
     const action = entry.action;
     const error = result.error ?? new Error("Unknown error");
 
-    entry.state = ActionState.FAILED;
+    entry.state = transitionAction(entry.state, ActionState.FAILED);
 
     this.logger.logAction(
       action.id,
@@ -462,8 +480,8 @@ export class ExecutionEngine {
 
     if (retryCount < maxRetries) {
       // Auto-retry
-      entry.state = ActionState.PENDING;
-      this.queue.resetCursor();
+      entry.state = transitionAction(entry.state, ActionState.PENDING);
+      this.queue.resetCursorTo(action.id);
       this.logger.logAction(
         action.id,
         ActionState.FAILED,
@@ -476,7 +494,7 @@ export class ExecutionEngine {
 
     // No more retries — decide based on optional flag
     if (action.meta?.optional && this.config.skipOptionalOnError) {
-      entry.state = ActionState.SKIPPED;
+      entry.state = transitionAction(entry.state, ActionState.SKIPPED);
       this.logger.logAction(
         action.id,
         ActionState.FAILED,

@@ -61,7 +61,7 @@ export function parsePlannerResponse(raw: string): PlannerResult {
     const result = validateActionSafe(item);
 
     if (result.success) {
-      actions.push(result.data as unknown as Action);
+      actions.push(result.data as Action);
     } else {
       const issues = result.error.issues.map(
         (issue) => `${issue.path.join(".")}: ${issue.message}`
@@ -145,7 +145,7 @@ export function parseToLessonPlan(
 
   const planResult = validateLessonPlanSafe({
     version: "1.0.0",
-    planId: `plan-${Date.now().toString(36)}`,
+    planId: `plan-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
     topic,
     level,
     estimatedDuration: result.data.actions.length * 60,

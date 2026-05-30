@@ -37,6 +37,65 @@ npm run build          # 生产构建 → packages/extension/dist/
 4. 选择 `packages/extension/dist/` 目录
 5. 打开任意 `*.geogebra.org` 页面，点击扩展图标打开侧边栏
 
+## 更新日志
+
+### v0.2.0 — 2026-05-30
+
+#### Bug 修复
+
+- **修复 "No active engine session" 错误**：SW 重启后会话恢复时未注册到内存 Map，导致 `getEngineSession()` 始终返回 `undefined`。现已在 `restoreSession()` 中同步注册。
+- **修复会话 tabId 不匹配**：`EXECUTE_PLAN` 和 `STUDENT_ANSWER` 各自独立调用 `resolveActiveTab()`，可能解析到不同标签页。新增 `currentSessionTabId` 绑定机制，确保同一会话内所有操作使用相同 tabId。
+- **修复 SW 重启竞态条件**：`reviveSessions()` 是异步的，消息可能在恢复完成前到达。新增 `whenRevived()` 门控，所有消息等恢复完成后再 dispatch。
+- **修复 `activeTabId` SW 重启后丢失**：模块级变量重置为 null。现由 `revive.ts` 恢复第一个已恢复的 tabId 到 dispatcher。
+- **修复 `setSessionsPort` 竞态**：恢复的会话 `port: null`，事件被静默丢弃。现改为等待恢复完成后再设置端口。
+- **修复引擎状态机绕过**：`retry()`、`skip()`、`executeEntry()` 等方法直接赋值 `entry.state` 绕过了状态机验证。现统一使用 `transitionAction()` 进行状态转换。
+- **修复 `abort()` 日志源状态错误**：无论从哪个状态调用 abort，日志都记录为 `RUNNING`。现已使用实际源状态。
+- **修复 PAUSE `setTimeout` 不可靠**：SW 中 `setTimeout` 可能被 Chrome 终止。对 >25s 的 duration 使用 `chrome.alarms` API。
+- **修复 `callApiStreaming` 静默吞掉错误**：SSE 解析错误现在输出 `console.debug` 日志。
+- **修复 relay 双重消息路由**：bridge 响应同时 resolve 和 `sendMessage`，可能产生循环。已移除多余的 `sendMessage`。
+- **修复 `clearAll` 状态重置不完整**：未清除 `execState` 和 `activeQuestion`。
+- **修复 `planId` 唯一性**：添加随机后缀防止快速连续调用时碰撞。
+- **修复 `revive.ts` 冗余动态导入**：改为静态导入 `removeSession`。
+
+#### 安全改进
+
+- **API Key 混淆存储**：`chrome.storage.local` 中的 API Key 现使用 XOR+btoa 混淆，防止 DevTools 直接读取。
+- **Bridge `postMessage` 使用实际 origin**：不再硬编码 `"*"`，改用 `window.location.origin`。
+- **`alarms` 权限**：manifest 新增 `alarms` 权限以支持可靠的 SW 计时。
+
+#### 性能优化
+
+- **React 组件 `memo` 化**：`ChatArea`、`MessageBubble`、`Timeline`、`LogPanel`、`QuestionCard` 均用 `React.memo` 包裹，减少不必要的重渲染。
+- **`getStatus()` 单次遍历**：从 3 次 O(n) 扫描优化为单次遍历，同时统计 `currentStep`、`completedSteps`、`failedSteps`、`skippedSteps`。
+- **`run()` 逐步 yield**：每步执行后 `await new Promise(setTimeout)` 让出事件循环，防止 SW 线程阻塞触发超时。
+- **`retry()` 精准 cursor 重置**：新增 `resetCursorTo(actionId)`，不再全局重置 cursor 到队列开头。
+- **API 调用 DRY 重构**：提取 `buildRequestBody()` 和 `fetchWithTimeout()` 共享方法，消除 `callApi` 与 `callApiStreaming` 的代码重复。
+
+#### DSL 校验增强
+
+- `FUNCTION_PLOT` 的 `range` 现验证 `min < max`
+- `SLIDER` 现验证 `min < max`、`initial ∈ [min, max]`、`width ∈ [50, 500]`
+- `FOCUS_VIEW` 的 `xRange`/`yRange` 现验证 `min < max`
+- `validateActionSafe` 和 `validateLessonPlanSafe` 移除了不安全的 `as` 类型断言
+
+#### i18n
+
+- 硬编码中文字符串（SW/CS 层）统一改为英文
+- 侧边栏 `store.ts` 中的硬编码中文改用 i18n `t()` 函数
+- 新增 `app.open_geogebra`、`sw.*` 等翻译键
+
+#### 测试
+
+- Vitest 环境从 `node` 改为 `jsdom`，支持 React 组件测试
+- 包含 `*.test.tsx` 文件
+- 移除 `__test__.ts` 排除规则，纳入 Vitest 管理
+- 新增 `jsdom` devDependency
+
+#### 新增功能
+
+- **"打开 GeoGebra" 按钮**：侧边栏顶部新增快捷跳转按钮，一键打开 `geogebra.org/calculator`
+- **Channel 重连竞态修复**：断连重连时先收集待重发条目再修改 Map，避免迭代中修改
+
 ## 架构概览
 
 ```
@@ -236,8 +295,9 @@ npm run test:watch     # 监听模式
 | 类型校验 | TypeScript (strict), Zod |
 | 构建 | Vite 5 (IIFE), PostCSS, Autoprefixer |
 | 测试 | Vitest |
-| 持久化 | `chrome.storage.local` (配置), `chrome.storage.session` (会话) |
+| 持久化 | `chrome.storage.local` (配置 + API Key 混淆), `chrome.storage.session` (引擎会话) |
 | 消息机制 | `chrome.runtime.connect` (port), `chrome.tabs.sendMessage`, `window.postMessage` |
+| 计时 | `chrome.alarms` (SW 长时 PAUSE), `setTimeout` (短时 PAUSE) |
 
 ## 消息协议
 
@@ -264,14 +324,26 @@ interface AppMessage {
 
 原先 AI 调用在 Service Worker 中进行，但 Chrome 会在 SW 持续工作约 5 分钟后杀死它。由于 deepseek-reasoner 等推理模型响应时间较长（2-5 分钟），调用现移至侧边栏（一个持久存在的 Web 页面），解析后的计划通过 `EXECUTE_PLAN` 消息发送给 SW 执行。
 
+### 会话 tabId 绑定
+
+`EXECUTE_PLAN` 创建会话时将 tabId 绑定到 dispatcher 的 `currentSessionTabId` 变量。后续的 `STUDENT_ANSWER`、`ENGINE_CONTROL` 等操作优先使用该绑定值，而非每次都调用 `resolveActiveTab()` 去猜测当前活跃标签页。这解决了多标签页场景和 SW 重启后的 tabId 不匹配问题。
+
+### SW 恢复门控
+
+`sw.ts` 中的 `whenRevived()` 机制确保所有消息（包括 sidepanel 和 content script 的）都等 `reviveSessions()` 完成后再 dispatch。这消除了 SW 重启后第一条消息到达时 `sessions` Map 仍为空的竞态条件。
+
 ### 自动重连
 
-侧边栏的 [`channel.ts`](packages/extension/src/sidepanel/messaging/channel.ts) 在 SW 断开连接时自动重新连接，并将所有待处理请求重新发送至新 port（最多重试 2 次）。
+侧边栏的 [`channel.ts`](packages/extension/src/sidepanel/messaging/channel.ts) 在 SW 断开连接时自动重新连接，并将所有待处理请求重新发送至新 port（最多重试 2 次）。重连时先收集待重发条目再修改 Map，避免迭代中修改导致的竞态。
 
 ### 引擎持久化
 
-引擎状态通过 `chrome.storage.session` 持久化，在 SW 重启后可恢复。RUNNING 状态降级为 PAUSED，未完成的 `ASK_OBSERVATION` promise 在恢复执行时重新发送给用户。
+引擎状态通过 `chrome.storage.session` 持久化，在 SW 重启后可恢复。RUNNING 状态降级为 PAUSED，未完成的 `ASK_OBSERVATION` promise 在恢复执行时重新发送给用户。恢复的会话在 `restoreSession()` 中同步注册到内存 Map，确保 `getEngineSession()` 可立即查找。
 
 ### 画布上下文压缩
 
 [`StateCompressor`](packages/extension/src/compressor/compressor.ts) 将包含数百个对象的 GeoGebra 画布状态压缩为 ~500 token 的紧凑文本块，通过优先级评分和基于角色的对象排序，使 AI 规划器能够在已有构造的基础上继续构建。
+
+### API Key 混淆
+
+API Key 在 `chrome.storage.local` 中使用 XOR+btoa 混淆存储。虽然 `chrome.storage.local` 本身是扩展隔离的，但混淆防止了通过 DevTools 直接读取明文密钥。

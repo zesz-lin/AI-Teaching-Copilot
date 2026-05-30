@@ -156,6 +156,14 @@ export class ActionQueue {
     this.cursor = 0;
   }
 
+  /** Reset cursor to a specific action's step index */
+  resetCursorTo(actionId: string): void {
+    const entry = this.get(actionId);
+    if (entry) {
+      this.cursor = Math.min(this.cursor, entry.stepIndex);
+    }
+  }
+
   /** Clear all entries */
   clear(): void {
     this.entries = [];

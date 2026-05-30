@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { memo, useState, useMemo } from "react";
 import { useTranslation } from "../i18n";
 import { renderMath } from "../markdown";
 
@@ -19,7 +19,7 @@ const btnClass =
 const submitClass =
   "shrink-0 px-3 py-1 rounded text-xs bg-accent text-white hover:bg-accent-hover disabled:opacity-40 transition-colors active:scale-95";
 
-export function QuestionCard({
+export const QuestionCard = memo(function QuestionCard({
   actionId,
   question,
   answerType,
@@ -231,4 +231,4 @@ export function QuestionCard({
       </div>
     </div>
   );
-}
+});

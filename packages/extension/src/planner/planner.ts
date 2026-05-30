@@ -131,13 +131,17 @@ export class TeachingPlanner {
     return isReasoningModel(this.config.model) ? 300_000 : this.config.timeoutMs;
   }
 
-  private async callApi(messages: ChatMessage[]): Promise<string> {
-    const { apiEndpoint, apiKey, model, maxTokens, temperature } = this.config;
+  private buildRequestBody(
+    messages: ChatMessage[],
+    extra?: Record<string, unknown>
+  ): Record<string, unknown> {
+    const { model, maxTokens, temperature } = this.config;
 
     const body: Record<string, unknown> = {
       model,
       messages,
       max_tokens: maxTokens,
+      ...extra,
     };
 
     // Reasoning models don't support temperature
@@ -150,8 +154,22 @@ export class TeachingPlanner {
       body.response_format = { type: "json_object" };
     }
 
+    return body;
+  }
+
+  private async fetchWithTimeout(
+    body: Record<string, unknown>,
+    signal?: AbortSignal
+  ): Promise<Response> {
+    const { apiEndpoint, apiKey } = this.config;
+
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.getEffectiveTimeout());
+
+    // Combine external signal with internal timeout
+    if (signal) {
+      signal.addEventListener("abort", () => controller.abort());
+    }
 
     try {
       const response = await fetch(apiEndpoint, {
@@ -169,17 +187,24 @@ export class TeachingPlanner {
         throw new Error(`HTTP ${response.status}: ${text.slice(0, 200)}`);
       }
 
-      const json: ChatCompletionResponse = await response.json();
-      const content = json.choices?.[0]?.message?.content;
-
-      if (!content) {
-        throw new Error("AI 返回了空响应");
-      }
-
-      return content;
+      return response;
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  private async callApi(messages: ChatMessage[]): Promise<string> {
+    const body = this.buildRequestBody(messages);
+    const response = await this.fetchWithTimeout(body);
+
+    const json: ChatCompletionResponse = await response.json();
+    const content = json.choices?.[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("AI returned an empty response");
+    }
+
+    return content;
   }
 
   /**
@@ -190,78 +215,46 @@ export class TeachingPlanner {
     messages: ChatMessage[],
     onChunk: (text: string, done: boolean) => void
   ): Promise<string> {
-    const { apiEndpoint, apiKey, model, maxTokens } = this.config;
+    const body = this.buildRequestBody(messages, { stream: true });
+    const response = await this.fetchWithTimeout(body);
 
-    const body: Record<string, unknown> = {
-      model,
-      messages,
-      max_tokens: maxTokens,
-      stream: true,
-    };
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("Stream not supported");
 
-    // Reasoning models don't support temperature
-    if (!isReasoningModel(model)) {
-      body.temperature = this.config.temperature;
-    }
+    const decoder = new TextDecoder();
+    let accumulated = "";
+    let buffer = "";
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.getEffectiveTimeout());
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    try {
-      const response = await fetch(apiEndpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
 
-      if (!response.ok) {
-        const text = await response.text().catch(() => "");
-        throw new Error(`HTTP ${response.status}: ${text.slice(0, 200)}`);
-      }
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith("data: ")) continue;
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("Stream not supported");
+        const data = trimmed.slice(6);
+        if (data === "[DONE]") continue;
 
-      const decoder = new TextDecoder();
-      let accumulated = "";
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith("data: ")) continue;
-
-          const data = trimmed.slice(6);
-          if (data === "[DONE]") continue;
-
-          try {
-            const parsed = JSON.parse(data);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              accumulated += content;
-            }
-          } catch {
-            // Skip malformed SSE lines
+        try {
+          const parsed = JSON.parse(data);
+          const content = parsed.choices?.[0]?.delta?.content;
+          if (content) {
+            accumulated += content;
           }
+        } catch (e) {
+          // Malformed SSE line — log for debugging but continue processing
+          console.debug("[Planner] Skipping malformed SSE line:", data, e);
         }
       }
-
-      onChunk("", true);
-      return accumulated;
-    } finally {
-      clearTimeout(timer);
     }
+
+    onChunk("", true);
+    return accumulated;
   }
 }
 

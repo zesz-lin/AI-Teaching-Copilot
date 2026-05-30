@@ -6,6 +6,7 @@ const en: Record<string, string> = {
   "app.tab.settings": "Settings",
   "app.darkmode.tooltip.light": "Switch to light mode",
   "app.darkmode.tooltip.dark": "Switch to dark mode",
+  "app.open_geogebra": "Open GeoGebra",
 
   "control.stop": "Stop",
   "control.resume": "Resume",
@@ -94,6 +95,15 @@ const en: Record<string, string> = {
   "system.no_rerun_query": "⚠️ No query to re-run",
   "system.stopped": "⏹ Stopped",
   "system.api_error": "❌ AI API error ({status}): {detail}",
+
+  "sw.no_tab": "Cannot connect to GeoGebra tab (tab {tabId}). Please ensure you are on a *.geogebra.org page and it is fully loaded.",
+  "sw.command_failed": "GeoGebra command failed: {error}",
+  "sw.no_api_key": "⚠️ Please set your AI API Key first.\n\nConfigure an OpenAI-compatible API endpoint, key, and model in the extension settings.",
+  "sw.config_load_failed": "⚠️ Failed to load AI config",
+  "sw.plan_failed": "❌ AI planning failed:\n\n{error}",
+  "sw.no_active_tab": "⚠️ No active GeoGebra tab found. Cannot execute the teaching plan.",
+  "sw.ai_error": "❌ AI call error:\n\n{error}",
+  "sw.thinking": "Request received, thinking...",
 };
 
 export default en;

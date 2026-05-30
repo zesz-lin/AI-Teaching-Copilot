@@ -1,9 +1,9 @@
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import { useStore } from "../store";
 import { useTranslation } from "../i18n";
 import { MessageBubble } from "./MessageBubble";
 
-export function ChatArea() {
+export const ChatArea = memo(function ChatArea() {
   const messages = useStore((s) => s.messages);
   const streamingId = useStore((s) => s.streamingId);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -42,4 +42,4 @@ export function ChatArea() {
       <div ref={bottomRef} />
     </div>
   );
-}
+});

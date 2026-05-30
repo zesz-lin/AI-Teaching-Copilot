@@ -6,6 +6,7 @@ import { create } from "zustand";
 import type { TeachingStep, ExecResultItem } from "../shared/messages";
 import type { LogEntry, EngineStatus } from "../engine/types";
 import type { Action } from "../dsl/types";
+import { t } from "./i18n";
 
 const DARK_MODE_KEY = "geogebra-copilot-dark-mode";
 
@@ -151,7 +152,7 @@ export const useStore = create<SidepanelState>((set, get) => ({
     const msg: ChatMessage = {
       id,
       role: "assistant",
-      content: "指令已接收，思考中",
+      content: t("sw.thinking"),
       timestamp: new Date().toISOString(),
       streaming: true,
     };
@@ -257,6 +258,8 @@ export const useStore = create<SidepanelState>((set, get) => ({
       logEntries: [],
       engineStatus: null,
       isRunning: false,
+      execState: null,
+      activeQuestion: null,
     }),
 }));
 

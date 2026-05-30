@@ -9,6 +9,26 @@ import { reviveSessions } from "./lifecycle/revive";
 import { setSessionsPort } from "./engine-manager";
 
 // ============================================================
+// Revival gate — block messages until sessions are restored
+// ============================================================
+
+let revived = false;
+const revivalReady = reviveSessions()
+  .then(() => { revived = true; })
+  .catch((err) => {
+    console.error("[SW] Failed to revive sessions:", err);
+    revived = true; // proceed anyway
+  });
+
+function whenRevived(fn: () => void): void {
+  if (revived) {
+    fn();
+  } else {
+    revivalReady.then(fn);
+  }
+}
+
+// ============================================================
 // Sidepanel long-lived connection
 // ============================================================
 
@@ -18,15 +38,22 @@ chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== SIDEPANEL_PORT) return;
 
   sidepanelPort = port;
-  setSessionsPort(port);
+
+  // Wait for sessions to be restored before setting port on sessions
+  whenRevived(() => {
+    setSessionsPort(port);
+  });
 
   port.onMessage.addListener((msg: AppMessage) => {
     if (!sidepanelPort) {
       console.warn("[SW] Received message but sidepanelPort is null, ignoring");
       return;
     }
-    dispatch(msg, sidepanelPort).catch((err) => {
-      console.error("[SW] dispatch error:", err);
+    // Wait for sessions to be restored before dispatching
+    whenRevived(() => {
+      dispatch(msg, sidepanelPort!).catch((err) => {
+        console.error("[SW] dispatch error:", err);
+      });
     });
   });
 
@@ -52,15 +79,12 @@ chrome.runtime.onMessage.addListener(
       console.warn("[SW] Received CS message but sidepanelPort is null, ignoring");
       return;
     }
-    dispatch(msg, sidepanelPort, sender.tab.id, respond).catch((err) => {
-      console.error("[SW] dispatch error:", err);
+    // Wait for sessions to be restored before dispatching CS messages
+    whenRevived(() => {
+      dispatch(msg, sidepanelPort!, sender.tab!.id, respond).catch((err) => {
+        console.error("[SW] dispatch error:", err);
+      });
     });
     return true; // Keep respond callback alive for async
   }
 );
-
-// ============================================================
-// SW lifecycle — restore state from storage
-// ============================================================
-
-reviveSessions();
